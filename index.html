@@ -1161,6 +1161,8 @@ function renderEditItem(spaceId, typeId, cp) {
 }
 
 let lastExtType = null; // remembers the last-picked extinguisher type as a convenience default when adding several in a row
+let lastDraftLocation = ""; // keeps the typed location when adding several extinguisher types at the same spot
+let lastDraftKey = null;
 
 function renderAddRow(spaceId, typeId) {
   const wrap = document.createElement("div");
@@ -1174,16 +1176,31 @@ function renderAddRow(spaceId, typeId) {
     plusBtn.className = "add-plus-btn";
     plusBtn.textContent = "+";
     plusBtn.setAttribute("aria-label", "Add checkpoint");
-    plusBtn.onclick = () => { openDraft = draftKey; render(); };
+    plusBtn.onclick = () => {
+      openDraft = draftKey;
+      lastDraftLocation = "";
+      lastDraftKey = draftKey;
+      render();
+    };
     wrap.appendChild(plusBtn);
     return wrap;
+  }
+
+  if (lastDraftKey !== draftKey) {
+    lastDraftLocation = "";
+    lastDraftKey = draftKey;
   }
 
   const closeBtn = document.createElement("button");
   closeBtn.className = "add-plus-btn is-open";
   closeBtn.textContent = "\u2715";
   closeBtn.setAttribute("aria-label", "Close");
-  closeBtn.onclick = () => { openDraft = null; render(); };
+  closeBtn.onclick = () => {
+    openDraft = null;
+    lastDraftLocation = "";
+    lastDraftKey = null;
+    render();
+  };
   wrap.appendChild(closeBtn);
 
   const formWrap = document.createElement("div");
@@ -1216,6 +1233,7 @@ function renderAddRow(spaceId, typeId) {
   const input = document.createElement("input");
   input.type = "text";
   input.placeholder = isExtinguisher ? "Location, e.g. Wall by entrance" : "New checkpoint name";
+  if (isExtinguisher) input.value = lastDraftLocation;
   form.appendChild(input);
 
   const confirmBtn = document.createElement("button");
@@ -1229,16 +1247,22 @@ function renderAddRow(spaceId, typeId) {
     const value = input.value.trim();
     if (!value) { input.focus(); return; }
     if (isExtinguisher && !typeSelect.value) { typeSelect.focus(); return; }
-    if (isExtinguisher) lastExtType = typeSelect.value;
+    if (isExtinguisher) {
+      lastExtType = typeSelect.value;
+      lastDraftLocation = value; // stays in the box so the next entry at the same spot only needs a type change
+    }
     addCheckpoint(spaceId, typeId, value, isExtinguisher ? typeSelect.value : undefined);
     // openDraft is already this draftKey, so re-rendering reopens the
-    // add-row with a fresh, empty, auto-focused input for the next entry.
+    // add-row with a fresh input for the next entry (location kept for
+    // extinguishers, cleared for everything else).
     render();
   }
 
   formWrap.appendChild(form);
   wrap.appendChild(formWrap);
-  setTimeout(() => input.focus(), 0);
+  setTimeout(() => {
+    if (isExtinguisher) { typeSelect.focus(); } else { input.focus(); }
+  }, 0);
   return wrap;
 }
 
