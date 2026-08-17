@@ -849,42 +849,24 @@ async function generateSpacePDFs() {
     showToast(msg);
   }
 
-  // Prefer the native share sheet (iOS/Android): one action, shows all 4
-  // files, and lets the person save straight into Drive/Files themselves.
-  try {
-    const files = docs.map(d => new File([d.blob], d.filename, { type: "application/pdf" }));
-    if (navigator.canShare && navigator.canShare({ files })) {
-      await navigator.share({ files: files, title: "Big Sky Compliance — " + space.name });
-      finish("Share sheet closed for " + space.name);
-      return;
-    }
-  } catch (err) {
-    if (err && err.name === "AbortError") {
-      finish("Share cancelled");
-      return;
-    }
-    // otherwise fall through to the direct-download fallback below
-  }
-
-  // Fallback for browsers without file-sharing support (most desktops):
-  // stagger the downloads slightly so the browser doesn't treat them as
-  // popup spam, and keep the button disabled throughout so repeat taps
-  // can't queue up duplicates.
-  docs.forEach((d, i) => {
-    setTimeout(() => {
-      const url = URL.createObjectURL(d.blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = d.filename;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      setTimeout(() => URL.revokeObjectURL(url), 4000);
-      if (i === docs.length - 1) {
-        finish("All 4 PDFs downloaded for " + space.name);
-      }
-    }, i * 500);
+  // Trigger all four downloads synchronously, back-to-back, in the same
+  // tick — no zip, no stagger. Staggering these with setTimeout (the
+  // earlier approach) broke iOS's "this came from a real tap" tracking
+  // between downloads, which is what was corrupting one file into a
+  // stray .txt. Multi-file Web Share has its own known WebKit bug around
+  // this exact scenario, so it's skipped in favour of plain downloads.
+  docs.forEach(d => {
+    const url = URL.createObjectURL(d.blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = d.filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(url), 4000);
   });
+
+  finish("All 4 PDFs downloaded for " + space.name);
 }
 
 document.getElementById("pdfBtn").onclick = generateSpacePDFs;
