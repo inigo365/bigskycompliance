@@ -725,14 +725,100 @@ const CHECKPOINTS_KEY = "bigsky_compliance_checkpoints_v1";
 
 /* CHECKPOINTS_DEFAULT is the permanent, hardcoded checkpoint list — this
    is what EVERY visitor sees, on every device, with no setup required.
-   It starts empty. Once checkpoints are entered via Edit Mode on a
-   phone, use the "Export checkpoint list" button (visible in Edit Mode)
-   to copy the finished object and paste it in here, replacing this
-   empty one, then commit to GitHub. Until that's done, entries made in
+   Studios 1–10 are populated below. BR1, BR2, 64, and 30 communal areas
+   are still pending — once entered via Edit Mode and exported, paste
+   the updated object in here (replacing this one) and commit to
+   GitHub. Until that's done for a given space, any new entries made in
    Edit Mode are only saved to that one device's local storage as a
    personal draft — they will NOT appear for anyone else, or on any
    other device, until exported and committed. */
-const CHECKPOINTS_DEFAULT = {};
+const CHECKPOINTS_DEFAULT = {
+  "studio1": {
+    "emergencyLighting": [{ id: "emergencyLighting_msx9isi71jdw", name: "Cove 1" }, { id: "emergencyLighting_msx9izjjss9g", name: "Cove 2" }, { id: "emergencyLighting_msx9j64zbsbm", name: "VIP 1" }, { id: "emergencyLighting_msx9jbj74o6b", name: "VIP 2" }, { id: "emergencyLighting_msx9jfbiola7", name: "Styling 1" }, { id: "emergencyLighting_msx9jk38oj6u", name: "Styling 2" }, { id: "emergencyLighting_msx9jnjixwh6", name: "Styling 3" }, { id: "emergencyLighting_msx9jro1hn4g", name: "Toilet 1" }, { id: "emergencyLighting_msx9ju4dr39f", name: "Toilet 2" }, { id: "emergencyLighting_msx9jwqrbit4", name: "Toilet 3" }, { id: "emergencyLighting_msx9k3uikrjy", name: "Kitchen Stairs" }, { id: "emergencyLighting_msx9k8g6zkfw", name: "Styling Exit" }, { id: "emergencyLighting_msx9kcb67vd4", name: "Kitchen 1" }, { id: "emergencyLighting_msx9kezmkkyw", name: "Kitchen 2" }, { id: "emergencyLighting_msx9kh9r1w9z", name: "Kitchen 3" }, { id: "emergencyLighting_msx9km6z0fy2", name: "Kitchen 4" }],
+    "fireExtinguishers": [{ id: "fireExtinguishers_msxac7c1gkfl", name: "VIP", extType: "co2" }, { id: "fireExtinguishers_msxaccq5qy2v", name: "VIP", extType: "foam" }, { id: "fireExtinguishers_msxagvp89n60", name: "Back Wall Corner", extType: "co2" }, { id: "fireExtinguishers_msxai5jpqbt1", name: "Back Wall Corner", extType: "foam" }, { id: "fireExtinguishers_msxaicnbkedm", name: "Main Shutter", extType: "co2" }, { id: "fireExtinguishers_msxaijc2oisv", name: "Main Shutter", extType: "foam" }, { id: "fireExtinguishers_msxainebpxuc", name: "Kitchen", extType: "co2" }, { id: "fireExtinguishers_msxairtmjfg1", name: "Kitchen", extType: "foam" }],
+    "fireDoors": [{ id: "fireDoors_msxajb6cf0a8", name: "Styling Fire Exit" }, { id: "fireDoors_msxajg9njld8", name: "Main Shutter" }, { id: "fireDoors_msxajiblad4c", name: "Kitchen" }, { id: "fireDoors_msxajptnfgjr", name: "Styling Fire Escape" }],
+    "waterTemp": [{ id: "waterTemp_msxak0iphok9", name: "Styling" }, { id: "waterTemp_msxak2jd45ok", name: "Kitchen" }, { id: "waterTemp_msxak72ck8tq", name: "Toilet 1" }, { id: "waterTemp_msxak98olvpf", name: "Toilet 2" }, { id: "waterTemp_msxakbkygz85", name: "Toilet 3" }],
+  },
+  "studio2": {
+    "emergencyLighting": [{ id: "emergencyLighting_msxarc42cc9n", name: "Cove 1" }, { id: "emergencyLighting_msxardzg4klr", name: "Cove 2" }, { id: "emergencyLighting_msxarhm3qoov", name: "Styling" }, { id: "emergencyLighting_msxarkemta62", name: "Styling Exit" }, { id: "emergencyLighting_msxarn14m4by", name: "Entrance" }, { id: "emergencyLighting_msxarr6y1u9o", name: "Entrance Exit Sign" }, { id: "emergencyLighting_msxarui8dm1e", name: "Kitchen 1" }, { id: "emergencyLighting_msxarwr1ppe6", name: "Kitchen 2" }, { id: "emergencyLighting_msxas1804ls9", name: "Toilet 1" }, { id: "emergencyLighting_msxas3eu62ss", name: "Toilet 2" }, { id: "emergencyLighting_msxas8jlcm7c", name: "Mezzanine Exit" }],
+    "fireExtinguishers": [{ id: "fireExtinguishers_msxao489ul58", name: "Catering", extType: "co2" }, { id: "fireExtinguishers_msxao9adhrkh", name: "Catering", extType: "foam" }, { id: "fireExtinguishers_msxaof74ttp3", name: "Cove", extType: "co2" }, { id: "fireExtinguishers_msxaolafu5vy", name: "Cove", extType: "foam" }, { id: "fireExtinguishers_msxaoql1prq1", name: "Entrance", extType: "co2" }, { id: "fireExtinguishers_msxaoupwquex", name: "Entrance", extType: "foam" }, { id: "fireExtinguishers_msxaozicotyh", name: "Hair & Makeup", extType: "foam" }],
+    "fireDoors": [{ id: "fireDoors_msxamt02820r", name: "Mezzanine Exit" }, { id: "fireDoors_msxamy65iqvf", name: "Reception Exit" }],
+    "waterTemp": [{ id: "waterTemp_msxanf1292hr", name: "Kitchen Sink" }, { id: "waterTemp_msxanhdtvflu", name: "Toilet 1" }, { id: "waterTemp_msxanjq7yc0h", name: "Toilet 2" }, { id: "waterTemp_msxanqzcz7u0", name: "Hair Basin" }],
+  },
+  "studio3": {
+    "emergencyLighting": [{ id: "emergencyLighting_msxau74jnpny", name: "Kitchen" }, { id: "emergencyLighting_msxauavp5zm5", name: "Entrance Hallway" }, { id: "emergencyLighting_msxauefcz4e9", name: "Toilet 1" }, { id: "emergencyLighting_msxaugj7384z", name: "Toilet 2" }, { id: "emergencyLighting_msxaukrplbnc", name: "Main Fire Exit" }, { id: "emergencyLighting_msxauoxw0b3y", name: "Kitchen Fire Exit" }, { id: "emergencyLighting_msxausueybmp", name: "Above Cove" }, { id: "emergencyLighting_msxav1vszwe8", name: "Hair & Makeup 1" }, { id: "emergencyLighting_msxav56w0t15", name: "Hair & Makeup 2" }, { id: "emergencyLighting_msxav9fzcs5p", name: "Hair & Makeup Exit" }],
+    "fireExtinguishers": [{ id: "fireExtinguishers_msxavoh2hcyo", name: "Balcony Door", extType: "foam" }, { id: "fireExtinguishers_msxavt1fcerj", name: "Balcony Door", extType: "co2" }],
+    "fireDoors": [{ id: "fireDoors_msxaw5zkbukj", name: "Main Entrance" }],
+    "waterTemp": [{ id: "waterTemp_msxawlzyw4g2", name: "Kitchen Sink" }, { id: "waterTemp_msxawo6786t9", name: "Hair Basin" }, { id: "waterTemp_msxawqh5xc6u", name: "Toilet 1" }, { id: "waterTemp_msxawtrfpaxq", name: "Toilet 2" }],
+  },
+  "studio4": {
+    "emergencyLighting": [{ id: "emergencyLighting_msxb0nu4yrpm", name: "Main Behind Cove" }, { id: "emergencyLighting_msxb0s4e98kx", name: "Above Balcony Exit" }, { id: "emergencyLighting_msxb0vtb1lpi", name: "Above Main Exit" }, { id: "emergencyLighting_msxb13t9hz54", name: "Toilet 1" }, { id: "emergencyLighting_msxb15tjw4ny", name: "Toilet 2" }, { id: "emergencyLighting_msxb18mgzb32", name: "Kitchen" }, { id: "emergencyLighting_msxb1a51dw90", name: "Makeup" }, { id: "emergencyLighting_msxb1b8tj5c3", name: "Hair" }],
+    "fireExtinguishers": [{ id: "fireExtinguishers_msxb2dwgvlay", name: "Main Area", extType: "co2" }, { id: "fireExtinguishers_msxb2ipnxpox", name: "Main Area", extType: "foam" }],
+    "fireDoors": [{ id: "fireDoors_msxb1sv3vqu5", name: "Main Entrance" }],
+    "waterTemp": [{ id: "waterTemp_msxb1x5cxntm", name: "Kitchen" }, { id: "waterTemp_msxb1zf5qejp", name: "Toilet 1" }, { id: "waterTemp_msxb21b87eju", name: "Toilet 2" }, { id: "waterTemp_msxb23rsvdcg", name: "Hair Basin" }],
+  },
+  "studio5": {
+    "emergencyLighting": [{ id: "emergencyLighting_msxb4mcej9lo", name: "Toilet 1" }, { id: "emergencyLighting_msxb4od3m0rb", name: "Toilet 2" }, { id: "emergencyLighting_msxb4rsju4jv", name: "Balcony Exit" }, { id: "emergencyLighting_msxb4unhofn2", name: "Main Exit" }, { id: "emergencyLighting_msxb4xexid24", name: "Kitchen" }, { id: "emergencyLighting_msxb5227n0cn", name: "Hair & Makeup 1" }, { id: "emergencyLighting_msxb54vr61xl", name: "Hair & Makeup 2" }],
+    "fireExtinguishers": [{ id: "fireExtinguishers_msxb5awftf93", name: "Main Area", extType: "foam" }, { id: "fireExtinguishers_msxb5kobeff9", name: "Main Area", extType: "co2" }],
+    "fireDoors": [{ id: "fireDoors_msxb5qdfda8e", name: "Main Exit" }],
+    "waterTemp": [{ id: "waterTemp_msxb5x28vbny", name: "Kitchen" }, { id: "waterTemp_msxb604gwwgr", name: "Toilet 1" }, { id: "waterTemp_msxb62gnfik2", name: "Toilet 2" }],
+  },
+  "studio6": {
+    "emergencyLighting": [{ id: "emergencyLighting_msxb7i55f7dr", name: "Bathroom" }, { id: "emergencyLighting_msxb7pd359in", name: "Near Changing Room" }, { id: "emergencyLighting_msxb7spgo7i0", name: "Main Entrance" }, { id: "emergencyLighting_msxb7xh97zax", name: "Grip Store" }, { id: "emergencyLighting_msxb816jgerc", name: "Grip Entrance" }, { id: "emergencyLighting_msxb84u0auyi", name: "Couch Area" }, { id: "emergencyLighting_msxb8a5czx38", name: "Main Fire Exit" }, { id: "emergencyLighting_msxb8ejjzr08", name: "Grip Fire Exit" }, { id: "emergencyLighting_msxb8j3crri6", name: "Cove Fire Exit" }],
+    "fireExtinguishers": [{ id: "fireExtinguishers_msxbea5jyowe", name: "Main Area", extType: "co2" }, { id: "fireExtinguishers_msxbedrjc6qk", name: "Main Area", extType: "foam" }],
+    "fireDoors": [{ id: "fireDoors_msxbekxl1900", name: "Main Entrance" }, { id: "fireDoors_msxbep6s485p", name: "Cove Fire Door" }, { id: "fireDoors_msxbes9k8gdl", name: "Grip Storage" }],
+    "waterTemp": [{ id: "waterTemp_msxbewvst02t", name: "Kitchen" }, { id: "waterTemp_msxbeykfuxfq", name: "Toilet" }],
+  },
+  "studio7": {
+    "emergencyLighting": [{ id: "emergencyLighting_msxbgyieko2v", name: "Main Entrance" }, { id: "emergencyLighting_msxbh3qljy81", name: "Table Area" }, { id: "emergencyLighting_msxbh7saxbsp", name: "Grip Storage" }, { id: "emergencyLighting_msxbhb2fiu9z", name: "Hair & Makeup" }, { id: "emergencyLighting_msxbhgb55e6k", name: "Main Exit Sign" }],
+    "fireExtinguishers": [{ id: "fireExtinguishers_msxbgey60avb", name: "Main Entrance", extType: "foam" }, { id: "fireExtinguishers_msxbgke2dmsh", name: "Main Entrance", extType: "co2" }],
+    "fireDoors": [{ id: "fireDoors_msxbg6h6hbk5", name: "Main Entrance" }],
+    "waterTemp": [{ id: "waterTemp_msxbfv86gb4c", name: "Kitchen" }, { id: "waterTemp_msxbfxnxfwvp", name: "Hair & Makeup" }],
+  },
+  "studio8": {
+    "emergencyLighting": [{ id: "emergencyLighting_msxbjnpikmn5", name: "Hair & Makeup Exit" }],
+    "fireExtinguishers": [{ id: "fireExtinguishers_msxbiu5cvmqq", name: "Main Entrance", extType: "co2" }, { id: "fireExtinguishers_msxbizbm1v2o", name: "Main Entrance", extType: "foam" }],
+    "fireDoors": [{ id: "fireDoors_msxbinc44swy", name: "Hair Basin" }],
+    "waterTemp": [{ id: "waterTemp_msxbid7f13rp", name: "Hair Basin" }],
+  },
+  "studio9": {
+    "emergencyLighting": [{ id: "emergencyLighting_msxbltt26m83", name: "Hair & Makeup Exit" }, { id: "emergencyLighting_msxblz4bwp8p", name: "Above Main Entrance" }],
+    "fireExtinguishers": [{ id: "fireExtinguishers_msxbkzthn2pp", name: "Entrance", extType: "foam" }, { id: "fireExtinguishers_msxbl322vugx", name: "Entrance", extType: "co2" }],
+    "fireDoors": [{ id: "fireDoors_msxble3f9i6h", name: "Hair & Makeup" }],
+    "waterTemp": [{ id: "waterTemp_msxbktopo66n", name: "Hair Basin" }],
+  },
+  "studio10": {
+    "emergencyLighting": [{ id: "emergencyLighting_msxbph47cj9x", name: "Catering" }, { id: "emergencyLighting_msxbpl8ay30b", name: "Shutters" }, { id: "emergencyLighting_msxbprjom5io", name: "Main Right Hand Side" }, { id: "emergencyLighting_msxbpwnjm111", name: "Main Left Hand Side" }, { id: "emergencyLighting_msxbq2019h6g", name: "Hair & Makeup" }, { id: "emergencyLighting_msxbq5cgwxf7", name: "Staircase" }, { id: "emergencyLighting_msxbqbd2a3jm", name: "Upstairs Toilet" }, { id: "emergencyLighting_msxbqdsqmh4r", name: "Fire Exit" }],
+    "fireExtinguishers": [{ id: "fireExtinguishers_msxbnn9b4bog", name: "Shutters", extType: "co2" }, { id: "fireExtinguishers_msxbnr3yiajr", name: "Shutters", extType: "foam" }, { id: "fireExtinguishers_msxbo0eqz0xx", name: "Main Right Hand Side", extType: "foam" }, { id: "fireExtinguishers_msxbo4fyktpe", name: "Main Right Hand Side", extType: "co2" }, { id: "fireExtinguishers_msxboa53p41i", name: "Main Left Hand Side", extType: "co2" }, { id: "fireExtinguishers_msxboghslych", name: "Main Left Hand Side", extType: "foam" }],
+    "fireDoors": [{ id: "fireDoors_msxbot7nfxvq", name: "Electrical Intake" }, { id: "fireDoors_msxbowijwg50", name: "Catering" }, { id: "fireDoors_msxbp4vqcqea", name: "Hair & Makeup 1" }, { id: "fireDoors_msxbp7i5721b", name: "Hair & Makeup 2" }],
+    "waterTemp": [{ id: "waterTemp_msxbn3q6cgqx", name: "Hair Basin" }, { id: "waterTemp_msxbn686zcyn", name: "Kitchen" }, { id: "waterTemp_msxbn8c2deb7", name: "Toilet 1" }, { id: "waterTemp_msxbnbqok3ch", name: "Toilet 2" }, { id: "waterTemp_msxbne7z2mde", name: "Toilet 3" }],
+  },
+  "br1_communal": {
+    "emergencyLighting": [],
+    "fireExtinguishers": [],
+    "fireDoors": [],
+    "waterTemp": [],
+  },
+  "br2_communal": {
+    "emergencyLighting": [],
+    "fireExtinguishers": [],
+    "fireDoors": [],
+    "waterTemp": [],
+  },
+  "b64_communal": {
+    "emergencyLighting": [],
+    "fireExtinguishers": [],
+    "fireDoors": [],
+    "waterTemp": [],
+  },
+  "b30_communal": {
+    "emergencyLighting": [],
+    "fireExtinguishers": [],
+    "fireDoors": [],
+    "waterTemp": [],
+  },
+};
+
 
 function emptyCheckpointSkeleton() {
   const map = {};
