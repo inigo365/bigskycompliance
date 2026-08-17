@@ -849,12 +849,25 @@ async function generateSpacePDFs() {
     showToast(msg);
   }
 
-  // Trigger all four downloads synchronously, back-to-back, in the same
-  // tick — no zip, no stagger. Staggering these with setTimeout (the
-  // earlier approach) broke iOS's "this came from a real tap" tracking
-  // between downloads, which is what was corrupting one file into a
-  // stray .txt. Multi-file Web Share has its own known WebKit bug around
-  // this exact scenario, so it's skipped in favour of plain downloads.
+  // Primary path: the native share sheet, showing all 4 PDFs as one
+  // action so they can be saved straight into Drive/Files on iOS.
+  try {
+    const files = docs.map(d => new File([d.blob], d.filename, { type: "application/pdf" }));
+    if (navigator.canShare && navigator.canShare({ files })) {
+      await navigator.share({ files: files, title: "Big Sky Compliance — " + space.name });
+      finish("Share sheet closed for " + space.name);
+      return;
+    }
+  } catch (err) {
+    if (err && err.name === "AbortError") {
+      finish("Share cancelled");
+      return;
+    }
+    // otherwise fall through to the direct-download fallback below
+  }
+
+  // Fallback for browsers without file-sharing support (mainly desktop):
+  // fire all four downloads synchronously, back-to-back.
   docs.forEach(d => {
     const url = URL.createObjectURL(d.blob);
     const a = document.createElement("a");
@@ -865,7 +878,6 @@ async function generateSpacePDFs() {
     document.body.removeChild(a);
     setTimeout(() => URL.revokeObjectURL(url), 4000);
   });
-
   finish("All 4 PDFs downloaded for " + space.name);
 }
 
