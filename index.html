@@ -200,17 +200,41 @@
     background:var(--card);
     border:1px solid var(--line);
     border-radius:var(--radius);
-    padding:14px 14px 6px;
+    padding:0;
     margin-bottom:12px;
+    overflow:hidden;
   }
   .section-head{
     display:flex;justify-content:space-between;align-items:center;
-    margin-bottom:4px;
+    padding:14px 14px;
+    cursor:pointer;
+    gap:8px;
+  }
+  .section-head-left{
+    display:flex;align-items:center;gap:8px;
+  }
+  .section-head-right{
+    display:flex;align-items:center;gap:8px;
   }
   .section-head h3{
     margin:0;font-size:13px;text-transform:uppercase;letter-spacing:0.05em;
     color:var(--ink);
   }
+  .section-dot{
+    width:7px;height:7px;border-radius:50%;
+    background:var(--fail);flex:0 0 auto;
+  }
+  .section-chevron{
+    color:var(--muted);font-size:13px;
+    transition:transform .18s ease;
+    flex:0 0 auto;
+  }
+  .section.open .section-chevron{transform:rotate(90deg);}
+  .section-body{
+    display:none;
+    padding:0 14px 8px;
+  }
+  .section.open .section-body{display:block;}
   .mark-all{
     font-size:11px;color:var(--accent);background:var(--accent-soft);
     border:none;padding:6px 10px;border-radius:8px;font-weight:600;
@@ -225,6 +249,25 @@
     display:flex;align-items:flex-start;justify-content:space-between;gap:10px;
   }
   .item-name{font-size:13.5px;line-height:1.35;padding-top:6px;flex:1;}
+
+  .ext-tag{
+    display:inline-block;
+    font-size:10px;font-weight:700;
+    padding:2px 8px;border-radius:999px;
+    margin-right:6px;
+    vertical-align:middle;
+    letter-spacing:.02em;
+  }
+  .ext-type-select{
+    font-size:13px;
+    padding:9px 10px;
+    border:1px solid var(--accent);
+    border-radius:8px;
+    font-family:inherit;
+    background:#fff;
+    margin-bottom:8px;
+    width:100%;
+  }
 
   .toggle{
     flex:0 0 auto;
@@ -608,22 +651,40 @@ const COMPLIANCE_TYPES = [
   { id: "waterTemp",         label: "Water Temperature",  kind: "water" },
 ];
 
+// Colours loosely follow the real UK extinguisher body-colour convention
+// (BS EN3), so the tag colour matches what's actually on the cylinder.
+const EXTINGUISHER_TYPES = [
+  { id: "co2",         label: "CO2",          bg: "#2b2b2b", fg: "#ffffff" },
+  { id: "foam",        label: "Foam",         bg: "#e7dcc2", fg: "#5b4b1f" },
+  { id: "water",       label: "Water",        bg: "#c0392b", fg: "#ffffff" },
+  { id: "wetChemical", label: "Wet Chemical", bg: "#e8c400", fg: "#3a3000" },
+  { id: "lithium",     label: "Lithium",      bg: "#8e5bc9", fg: "#ffffff" },
+];
+function extinguisherType(id) {
+  return EXTINGUISHER_TYPES.find(e => e.id === id);
+}
+
+const ADDR_29_31 = "29-31 Brewery Road, N7 9QH, London";
+const ADDR_68_72 = "68-72 Brewery Road, N7 9NT, London";
+const ADDR_64 = "64 Brewery Road, N7 9NT, London";
+const ADDR_30 = "30 Brewery Road, N7 9NH, London";
+
 const BUILDINGS = [
   {
     id: "studios",
     name: "Studios",
     shortName: "",
     spaces: [
-      { id: "studio1", name: "Studio 1" },
-      { id: "studio2", name: "Studio 2" },
-      { id: "studio3", name: "Studio 3" },
-      { id: "studio4", name: "Studio 4" },
-      { id: "studio5", name: "Studio 5" },
-      { id: "studio6", name: "Studio 6" },
-      { id: "studio7", name: "Studio 7" },
-      { id: "studio8", name: "Studio 8" },
-      { id: "studio9", name: "Studio 9" },
-      { id: "studio10", name: "Studio 10" },
+      { id: "studio1", name: "Studio 1", address: ADDR_29_31 },
+      { id: "studio2", name: "Studio 2", address: ADDR_29_31 },
+      { id: "studio3", name: "Studio 3", address: ADDR_29_31 },
+      { id: "studio4", name: "Studio 4", address: ADDR_29_31 },
+      { id: "studio5", name: "Studio 5", address: ADDR_29_31 },
+      { id: "studio6", name: "Studio 6", address: ADDR_29_31 },
+      { id: "studio7", name: "Studio 7", address: ADDR_29_31 },
+      { id: "studio8", name: "Studio 8", address: ADDR_68_72 },
+      { id: "studio9", name: "Studio 9", address: ADDR_68_72 },
+      { id: "studio10", name: "Studio 10", address: ADDR_68_72 },
     ]
   },
   {
@@ -631,7 +692,7 @@ const BUILDINGS = [
     name: "BR1 — Communal Areas",
     shortName: "BR1",
     spaces: [
-      { id: "br1_communal", name: "BR1 Communal Areas" },
+      { id: "br1_communal", name: "BR1 Communal Areas", address: ADDR_29_31 },
     ]
   },
   {
@@ -639,7 +700,7 @@ const BUILDINGS = [
     name: "BR2 — Communal Areas",
     shortName: "BR2",
     spaces: [
-      { id: "br2_communal", name: "BR2 Communal Areas" },
+      { id: "br2_communal", name: "BR2 Communal Areas", address: ADDR_68_72 },
     ]
   },
   {
@@ -647,7 +708,7 @@ const BUILDINGS = [
     name: "64 — Communal Areas",
     shortName: "64",
     spaces: [
-      { id: "b64_communal", name: "64 Communal Areas" },
+      { id: "b64_communal", name: "64 Communal Areas", address: ADDR_64 },
     ]
   },
   {
@@ -655,7 +716,7 @@ const BUILDINGS = [
     name: "30 — Communal Areas",
     shortName: "30",
     spaces: [
-      { id: "b30_communal", name: "30 Communal Areas" },
+      { id: "b30_communal", name: "30 Communal Areas", address: ADDR_30 },
     ]
   },
 ];
@@ -716,11 +777,12 @@ function newCheckpointId(typeId) {
   return typeId + "_" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
 }
 
-function addCheckpoint(spaceId, typeId, name) {
+function addCheckpoint(spaceId, typeId, name, extType) {
   const trimmed = name.trim();
   if (!trimmed) return;
   const type = COMPLIANCE_TYPES.find(t => t.id === typeId);
   const cp = { id: newCheckpointId(typeId), name: trimmed };
+  if (typeId === "fireExtinguishers" && extType) cp.extType = extType;
   CHECKPOINTS[spaceId][typeId].push(cp);
   saveCheckpoints();
 
@@ -748,7 +810,10 @@ function generateExportCode() {
     lines.push("  " + JSON.stringify(s.id) + ": {");
     COMPLIANCE_TYPES.forEach(t => {
       const cps = CHECKPOINTS[s.id][t.id];
-      const itemsStr = cps.map(cp => "{ id: " + JSON.stringify(cp.id) + ", name: " + JSON.stringify(cp.name) + " }").join(", ");
+      const itemsStr = cps.map(cp => {
+        const extBit = cp.extType ? ", extType: " + JSON.stringify(cp.extType) : "";
+        return "{ id: " + JSON.stringify(cp.id) + ", name: " + JSON.stringify(cp.name) + extBit + " }";
+      }).join(", ");
       lines.push("    " + JSON.stringify(t.id) + ": [" + itemsStr + "],");
     });
     lines.push("  },");
@@ -876,6 +941,7 @@ checkedByInput.oninput = (e) => {
    ====================================================================== */
 let editMode = false;
 let openDraft = null; // "spaceId::typeId" of the section currently showing the add-row input, or null
+let openTypeSections = new Set(); // "spaceId::typeId" keys — closed by default for every space
 
 document.getElementById("editModeToggle").onclick = () => {
   editMode = !editMode;
@@ -971,53 +1037,98 @@ function renderMain() {
   }
 
   COMPLIANCE_TYPES.forEach(t => {
+    const sectionKey = space.id + "::" + t.id;
+    const isOpen = openTypeSections.has(sectionKey);
+
     const section = document.createElement("div");
-    section.className = "section";
+    section.className = "section" + (isOpen ? " open" : "");
 
     const head = document.createElement("div");
     head.className = "section-head";
+
+    const left = document.createElement("div");
+    left.className = "section-head-left";
+    const cps = CHECKPOINTS[space.id][t.id];
+    const sectionIssue = cps.some(cp => {
+      const data = state.items[space.id][t.id][cp.id];
+      return (t.kind === "passfail" && data.status === "fail") || (data.notes && data.notes.trim());
+    });
+    if (sectionIssue) {
+      const dot = document.createElement("span");
+      dot.className = "section-dot";
+      left.appendChild(dot);
+    }
     const h3 = document.createElement("h3");
     h3.textContent = t.label;
-    head.appendChild(h3);
+    left.appendChild(h3);
+    head.appendChild(left);
 
-    const cps = CHECKPOINTS[space.id][t.id];
-
-    if (!editMode && t.kind === "passfail" && cps.length) {
+    const right = document.createElement("div");
+    right.className = "section-head-right";
+    if (!editMode && t.kind === "passfail" && cps.length && isOpen) {
       const btn = document.createElement("button");
       btn.className = "mark-all";
       btn.textContent = "Mark all pass";
-      btn.onclick = () => {
+      btn.onclick = (e) => {
+        e.stopPropagation();
         cps.forEach(cp => { state.items[space.id][t.id][cp.id].status = "pass"; });
         saveState();
         render();
       };
-      head.appendChild(btn);
+      right.appendChild(btn);
     }
+    const chevron = document.createElement("span");
+    chevron.className = "section-chevron";
+    chevron.innerHTML = "&#8250;";
+    right.appendChild(chevron);
+    head.appendChild(right);
+
+    head.onclick = () => {
+      if (openTypeSections.has(sectionKey)) openTypeSections.delete(sectionKey);
+      else openTypeSections.add(sectionKey);
+      render();
+    };
     section.appendChild(head);
+
+    const body = document.createElement("div");
+    body.className = "section-body";
 
     if (editMode) {
       if (!cps.length) {
         const p = document.createElement("div");
         p.className = "empty-note";
         p.textContent = "No checkpoints yet — tap + below to add the first one.";
-        section.appendChild(p);
+        body.appendChild(p);
       } else {
-        cps.forEach(cp => section.appendChild(renderEditItem(space.id, t.id, cp)));
+        cps.forEach(cp => body.appendChild(renderEditItem(space.id, t.id, cp)));
       }
-      section.appendChild(renderAddRow(space.id, t.id));
+      body.appendChild(renderAddRow(space.id, t.id));
     } else if (!cps.length) {
       const p = document.createElement("div");
       p.className = "empty-note";
       p.textContent = "No checkpoints added yet for this space. Turn on \u201cEdit checkpoints\u201d above to set them up.";
-      section.appendChild(p);
+      body.appendChild(p);
     } else if (t.kind === "passfail") {
-      cps.forEach(cp => section.appendChild(renderPassFailItem(space.id, t.id, cp)));
+      cps.forEach(cp => body.appendChild(renderPassFailItem(space.id, t.id, cp)));
     } else {
-      cps.forEach(cp => section.appendChild(renderWaterItem(space.id, t.id, cp)));
+      cps.forEach(cp => body.appendChild(renderWaterItem(space.id, t.id, cp)));
     }
 
+    section.appendChild(body);
     main.appendChild(section);
   });
+}
+
+function appendExtTag(container, cp) {
+  if (!cp.extType) return;
+  const ext = extinguisherType(cp.extType);
+  if (!ext) return;
+  const tag = document.createElement("span");
+  tag.className = "ext-tag";
+  tag.style.background = ext.bg;
+  tag.style.color = ext.fg;
+  tag.textContent = ext.label;
+  container.appendChild(tag);
 }
 
 function renderEditItem(spaceId, typeId, cp) {
@@ -1026,7 +1137,8 @@ function renderEditItem(spaceId, typeId, cp) {
 
   const name = document.createElement("div");
   name.className = "edit-item-name";
-  name.textContent = cp.name;
+  appendExtTag(name, cp);
+  name.appendChild(document.createTextNode(cp.name));
   item.appendChild(name);
 
   const xBtn = document.createElement("button");
@@ -1048,11 +1160,14 @@ function renderEditItem(spaceId, typeId, cp) {
   return item;
 }
 
+let lastExtType = null; // remembers the last-picked extinguisher type as a convenience default when adding several in a row
+
 function renderAddRow(spaceId, typeId) {
   const wrap = document.createElement("div");
   wrap.className = "add-row";
   const draftKey = spaceId + "::" + typeId;
   const isOpen = openDraft === draftKey;
+  const isExtinguisher = typeId === "fireExtinguishers";
 
   if (!isOpen) {
     const plusBtn = document.createElement("button");
@@ -1071,13 +1186,36 @@ function renderAddRow(spaceId, typeId) {
   closeBtn.onclick = () => { openDraft = null; render(); };
   wrap.appendChild(closeBtn);
 
+  const formWrap = document.createElement("div");
+  formWrap.style.flex = "1";
+
+  let typeSelect = null;
+  if (isExtinguisher) {
+    typeSelect = document.createElement("select");
+    typeSelect.className = "ext-type-select";
+    const placeholder = document.createElement("option");
+    placeholder.value = "";
+    placeholder.textContent = "Select extinguisher type\u2026";
+    placeholder.disabled = true;
+    typeSelect.appendChild(placeholder);
+    EXTINGUISHER_TYPES.forEach(ext => {
+      const opt = document.createElement("option");
+      opt.value = ext.id;
+      opt.textContent = ext.label;
+      typeSelect.appendChild(opt);
+    });
+    typeSelect.value = lastExtType || "";
+    if (!typeSelect.value) placeholder.selected = true;
+    formWrap.appendChild(typeSelect);
+  }
+
   const form = document.createElement("form");
   form.className = "add-form";
   form.onsubmit = (e) => { e.preventDefault(); confirmAdd(); };
 
   const input = document.createElement("input");
   input.type = "text";
-  input.placeholder = "New checkpoint name";
+  input.placeholder = isExtinguisher ? "Location, e.g. Wall by entrance" : "New checkpoint name";
   form.appendChild(input);
 
   const confirmBtn = document.createElement("button");
@@ -1090,13 +1228,16 @@ function renderAddRow(spaceId, typeId) {
   function confirmAdd() {
     const value = input.value.trim();
     if (!value) { input.focus(); return; }
-    addCheckpoint(spaceId, typeId, value);
+    if (isExtinguisher && !typeSelect.value) { typeSelect.focus(); return; }
+    if (isExtinguisher) lastExtType = typeSelect.value;
+    addCheckpoint(spaceId, typeId, value, isExtinguisher ? typeSelect.value : undefined);
     // openDraft is already this draftKey, so re-rendering reopens the
     // add-row with a fresh, empty, auto-focused input for the next entry.
     render();
   }
 
-  wrap.appendChild(form);
+  formWrap.appendChild(form);
+  wrap.appendChild(formWrap);
   setTimeout(() => input.focus(), 0);
   return wrap;
 }
@@ -1111,7 +1252,8 @@ function renderPassFailItem(spaceId, typeId, cp) {
 
   const name = document.createElement("div");
   name.className = "item-name";
-  name.textContent = cp.name;
+  appendExtTag(name, cp);
+  name.appendChild(document.createTextNode(cp.name));
   top.appendChild(name);
 
   const toggle = document.createElement("div");
@@ -1534,6 +1676,13 @@ async function generateSpacePDFs() {
     const logoHeight = logoWidth / BIGSKY_LOGO_ASPECT;
     doc.addImage(BIGSKY_LOGO, "PNG", marginX, 26, logoWidth, logoHeight);
 
+    // Building address, left-aligned under the logo
+    doc.setFont(undefined, "normal");
+    doc.setFontSize(8.5);
+    doc.setTextColor(120);
+    doc.text(space.address || "", marginX, logoHeight + 38);
+    doc.setTextColor(0);
+
     // Title block, top-right, baseline-aligned with the logo
     doc.setFont(undefined, "bold");
     doc.setFontSize(13);
@@ -1549,18 +1698,27 @@ async function generateSpacePDFs() {
     doc.setDrawColor(220);
     doc.line(marginX, 74, rightX, 74);
 
+    const isExtinguisher = type.id === "fireExtinguishers";
     const cps = CHECKPOINTS[space.id][type.id];
     const rows = cps.map(cp => {
       const data = state.items[space.id][type.id][cp.id];
       if (type.kind === "passfail") {
-        return [cp.name, data.status === "pass" ? "Pass" : "FAIL", data.notes || ""];
+        const result = data.status === "pass" ? "Pass" : "FAIL";
+        if (isExtinguisher) {
+          const ext = extinguisherType(cp.extType);
+          return [ext ? ext.label : "—", cp.name, result, data.notes || ""];
+        }
+        return [cp.name, result, data.notes || ""];
       }
       return [cp.name, data.hot ? data.hot + " C" : "—", data.cold ? data.cold + " C" : "—", data.notes || ""];
     });
 
-    const head = type.kind === "passfail"
-      ? [["Checkpoint", "Result", "Notes"]]
-      : [["Checkpoint", "Hot", "Cold", "Notes"]];
+    const head = isExtinguisher
+      ? [["Type", "Checkpoint", "Result", "Notes"]]
+      : type.kind === "passfail"
+        ? [["Checkpoint", "Result", "Notes"]]
+        : [["Checkpoint", "Hot", "Cold", "Notes"]];
+    const failColIndex = isExtinguisher ? 2 : 1;
 
     doc.autoTable({
       startY: 88,
@@ -1570,7 +1728,7 @@ async function generateSpacePDFs() {
       styles: { fontSize: 10, cellPadding: 6, font: "helvetica" },
       headStyles: { fillColor: [20, 22, 24] },
       didParseCell: function (data) {
-        if (type.kind === "passfail" && data.column.index === 1 && data.cell.raw === "FAIL") {
+        if (type.kind === "passfail" && data.column.index === failColIndex && data.cell.raw === "FAIL") {
           data.cell.styles.textColor = [196, 69, 58];
           data.cell.styles.fontStyle = "bold";
         }
@@ -1591,7 +1749,7 @@ async function generateSpacePDFs() {
     doc.setFont(undefined, "normal");
     doc.setFontSize(8);
     doc.setTextColor(150);
-    doc.text("BIG SKY FACILITIES  \u00b7  INTERNAL COMPLIANCE RECORD", pageWidth / 2, finalY + 50, { align: "center" });
+    doc.text("BIG SKY FACILITIES  \u00b7  INTERNAL COMPLIANCE RECORD  \u00b7  facilities@bigskylondon.com", pageWidth / 2, finalY + 50, { align: "center" });
     doc.setTextColor(0);
 
     const namePieces = [];
