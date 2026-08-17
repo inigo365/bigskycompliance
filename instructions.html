@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>How to Use — Big Sky Compliance</title>
+<style>
+  :root{
+    --ink:#1c2024;
+    --paper:#f7f7f5;
+    --card:#ffffff;
+    --line:#e2e1dd;
+    --muted:#79766f;
+    --accent:#2f5d50;
+    --accent-soft:#e6efec;
+    --pass:#2f8f5b;
+    --fail:#c4453a;
+    --fail-soft:#fbe9e7;
+    --radius:12px;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--paper);
+    color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    line-height:1.5;
+  }
+  header{
+    background:var(--ink);
+    color:#fff;
+    padding:22px 18px;
+  }
+  header h1{margin:0 0 4px;font-size:20px;font-weight:700;}
+  header p{margin:0;font-size:13px;color:#b9c4c0;}
+  main{
+    max-width:680px;
+    margin:0 auto;
+    padding:20px 16px 60px;
+  }
+  .back-link{
+    display:inline-block;
+    color:#cfd6d3;
+    font-size:12.5px;
+    text-decoration:none;
+    margin-bottom:2px;
+  }
+  .section{
+    background:var(--card);
+    border:1px solid var(--line);
+    border-radius:var(--radius);
+    padding:18px 18px 8px;
+    margin-bottom:16px;
+  }
+  .section h2{
+    margin:0 0 4px;
+    font-size:16px;
+    font-weight:700;
+  }
+  .section .sub{
+    font-size:12.5px;
+    color:var(--muted);
+    margin:0 0 14px;
+  }
+  .step{
+    display:flex;gap:12px;
+    padding:12px 0;
+    border-top:1px solid var(--line);
+  }
+  .step:first-of-type{border-top:none;}
+  .step-num{
+    flex:0 0 auto;
+    width:24px;height:24px;
+    border-radius:50%;
+    background:var(--accent-soft);
+    color:var(--accent);
+    font-size:12px;font-weight:700;
+    display:flex;align-items:center;justify-content:center;
+  }
+  .step-body h3{
+    margin:0 0 4px;font-size:14px;font-weight:700;
+  }
+  .step-body p{
+    margin:0;font-size:13.5px;color:#3a3d40;
+  }
+  .step-body p + p{margin-top:6px;}
+  .note{
+    background:var(--accent-soft);
+    color:var(--accent);
+    font-size:12.5px;
+    padding:10px 12px;
+    border-radius:8px;
+    margin:12px 0;
+  }
+  .warn{
+    background:var(--fail-soft);
+    color:var(--fail);
+    font-size:12.5px;
+    padding:10px 12px;
+    border-radius:8px;
+    margin:12px 0;
+  }
+  code{
+    background:var(--paper);
+    padding:1px 5px;
+    border-radius:4px;
+    font-size:12px;
+  }
+  .toc{
+    display:flex;flex-wrap:wrap;gap:8px;
+    margin-bottom:18px;
+  }
+  .toc a{
+    background:var(--card);
+    border:1px solid var(--line);
+    border-radius:999px;
+    padding:7px 13px;
+    font-size:12.5px;
+    color:var(--ink);
+    text-decoration:none;
+    font-weight:600;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <a class="back-link" href="./index.html">&larr; Back to the app</a>
+  <h1>How to Use — Big Sky Compliance</h1>
+  <p>A quick guide to the checklist and the maintenance list. Bookmark this page.</p>
+</header>
+
+<main>
+
+  <div class="toc">
+    <a href="#checklist">Doing a check</a>
+    <a href="#pdfs">Generating PDFs</a>
+    <a href="#maintenance">Maintenance List</a>
+    <a href="#filing">Filing PDFs</a>
+  </div>
+
+  <div class="section" id="checklist">
+    <h2>Doing a compliance check</h2>
+    <p class="sub">Emergency lighting, fire extinguishers, fire doors, water temperature</p>
+
+    <div class="step">
+      <div class="step-num">1</div>
+      <div class="step-body">
+        <h3>Enter your name once</h3>
+        <p>At the top of the Checklist tab, type your name into the box. It's saved on your device and appears on every PDF as "Checked by."</p>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-num">2</div>
+      <div class="step-body">
+        <h3>Pick the building, then the space</h3>
+        <p>The second dropdown only appears for Studios (1–10), since BR1, BR2, 64, and 30 are each treated as one single communal space.</p>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-num">3</div>
+      <div class="step-body">
+        <h3>Work through all four sections</h3>
+        <p>Everything defaults to <strong>Pass</strong>. Only tap <strong>Fail</strong> if something's actually wrong — a note box will open so you can describe what's wrong.</p>
+        <p>Water Temperature is different: enter the hot and cold readings in &deg;C for each location, with an optional note.</p>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-num">4</div>
+      <div class="step-body">
+        <h3>It saves automatically</h3>
+        <p>Nothing is lost if you close the page or lose signal mid-check. It only clears if you deliberately tap "Reset this space's data" at the bottom — and that only affects the one space you're on, nothing else.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="section" id="pdfs">
+    <h2>Generating PDFs</h2>
+
+    <div class="step">
+      <div class="step-num">1</div>
+      <div class="step-body">
+        <h3>Tap "Generate PDFs for this space"</h3>
+        <p>Confirm in the pop-up. This creates <strong>four separate PDFs</strong> — one per compliance type — all for the space you currently have open.</p>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-num">2</div>
+      <div class="step-body">
+        <h3>On iPhone</h3>
+        <p>The share sheet opens with all four files. Choose Google Drive (or Files, AirDrop, etc.) to save them.</p>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-num">3</div>
+      <div class="step-body">
+        <h3>On a laptop/desktop</h3>
+        <p>All four download straight to your normal Downloads folder.</p>
+      </div>
+    </div>
+
+    <div class="note">
+      Each PDF is already named clearly, e.g. <code>Studio 3 - Fire Doors - 17 Aug 2026.pdf</code> — so you can just drag them straight into that month's Drive folder without renaming anything.
+    </div>
+  </div>
+
+  <div class="section" id="maintenance">
+    <h2>The Maintenance List</h2>
+    <p class="sub">Shared across everyone — your manager sees the same list, on any device</p>
+
+    <div class="step">
+      <div class="step-num">1</div>
+      <div class="step-body">
+        <h3>It fills itself in</h3>
+        <p>Any time you generate PDFs for a space, anything marked Fail (or any water reading with a note) is automatically added to the Maintenance List — no extra step required.</p>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-num">2</div>
+      <div class="step-body">
+        <h3>Switch to the "Maintenance List" tab to view it</h3>
+        <p>All 14 spaces are listed with a count badge — red if something's open, green "Clear" if not. Tap a space to expand it.</p>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-num">3</div>
+      <div class="step-body">
+        <h3>Add tracking notes</h3>
+        <p>Each flagged item has an editable "Action note" box — e.g. "Engineer due 15/09." It saves as you type.</p>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-num">4</div>
+      <div class="step-body">
+        <h3>Mark resolved once it's fixed</h3>
+        <p>This removes it from the active Maintenance List. It does <strong>not</strong> change the original checklist — that only shows Pass again once you physically re-check that item on your next visit.</p>
+      </div>
+    </div>
+
+    <div class="note">
+      "Refresh" re-checks the shared sheet for anything a teammate has added or changed. "Open Sheet" jumps straight to the raw Google Sheet if you ever want to look at or edit it directly.
+    </div>
+  </div>
+
+  <div class="section" id="filing">
+    <h2>Filing your PDFs</h2>
+    <div class="step">
+      <div class="step-num">1</div>
+      <div class="step-body">
+        <h3>Keep it simple</h3>
+        <p>In your shared Drive compliance folder, make a subfolder per month (e.g. "August 2026"), and a folder per space inside that. Drop the four PDFs in — the filenames already tell you what's what.</p>
+      </div>
+    </div>
+  </div>
+
+</main>
+</body>
+</html>

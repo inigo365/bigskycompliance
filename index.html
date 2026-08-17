@@ -39,7 +39,10 @@
     display:flex;align-items:baseline;justify-content:space-between;gap:8px;
   }
   header h1{margin:0;font-size:17px;font-weight:700;letter-spacing:0.01em;}
-  header .tag{font-size:11px;color:#b9c4c0;text-transform:uppercase;letter-spacing:0.08em;}
+  header .help-link{
+    font-size:11px;color:#b9c4c0;text-decoration:underline;
+    white-space:nowrap;flex:0 0 auto;
+  }
   .savebar{font-size:11px;color:#9fb3ac;margin-top:4px;min-height:14px;}
 
   .picker-row{
@@ -508,7 +511,7 @@
 <header>
   <div class="brand">
     <h1>Big Sky Compliance</h1>
-    <span class="tag">Checks</span>
+    <a class="help-link" href="./instructions.html">How to use</a>
   </div>
   <div class="savebar" id="saveBar">All changes saved on this device</div>
 
