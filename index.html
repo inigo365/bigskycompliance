@@ -88,6 +88,94 @@
   }
   .picker select option{color:#111;}
 
+  .edit-toggle{
+    width:100%;
+    margin-top:8px;
+    background:rgba(255,255,255,0.06);
+    border:1px solid rgba(255,255,255,0.14);
+    color:#cfd6d3;
+    font-size:12px;font-weight:600;
+    padding:9px 6px;border-radius:9px;
+    font-family:inherit;
+  }
+  .edit-toggle.active{
+    background:#c98a2b;
+    border-color:#c98a2b;
+    color:#1c1200;
+  }
+
+  .edit-banner{
+    background:#fbf1de;
+    border:1px solid #e7c78a;
+    color:#7a5a17;
+    font-size:12px;font-weight:600;
+    padding:9px 12px;border-radius:10px;
+    margin-bottom:12px;
+    line-height:1.4;
+  }
+
+  .edit-item{
+    display:flex;align-items:center;justify-content:space-between;gap:10px;
+    padding:10px 0;
+    border-bottom:1px solid var(--line);
+  }
+  .edit-item:last-child{border-bottom:none;}
+  .edit-item .edit-item-name{font-size:13.5px;flex:1;line-height:1.35;}
+  .x-btn{
+    flex:0 0 auto;
+    width:26px;height:26px;
+    border-radius:50%;
+    border:none;
+    background:var(--fail-soft);
+    color:var(--fail);
+    font-size:13px;font-weight:700;
+    line-height:1;
+  }
+
+  .add-row{
+    display:flex;align-items:center;gap:8px;
+    padding-top:10px;
+  }
+  .add-plus-btn{
+    flex:0 0 auto;
+    width:32px;height:32px;
+    border-radius:50%;
+    border:none;
+    background:var(--accent);
+    color:#fff;
+    font-size:17px;font-weight:700;
+    line-height:1;
+  }
+  .add-plus-btn.is-open{
+    background:var(--paper);
+    color:var(--muted);
+    border:1px solid var(--line);
+  }
+  .add-form{
+    flex:1;
+    display:flex;align-items:center;gap:8px;
+  }
+  .add-form input{
+    flex:1;
+    font-size:13.5px;
+    padding:9px 10px;
+    border:1px solid var(--accent);
+    border-radius:8px;
+    font-family:inherit;
+    background:#fff;
+  }
+  .add-form input:focus{outline:none;}
+  .add-confirm-btn{
+    flex:0 0 auto;
+    width:32px;height:32px;
+    border-radius:50%;
+    border:none;
+    background:var(--pass);
+    color:#fff;
+    font-size:15px;font-weight:700;
+    line-height:1;
+  }
+
   main{padding:14px 12px;max-width:680px;margin:0 auto;}
 
   .space-banner{
@@ -262,6 +350,44 @@
   .modal-btn.confirm{
     background:var(--fail);color:#fff;
   }
+
+  .export-box{
+    max-width:480px;
+  }
+  .export-box p{
+    margin-bottom:10px;
+  }
+  .export-box code{
+    background:var(--paper);
+    padding:1px 5px;
+    border-radius:4px;
+    font-size:12px;
+  }
+  #exportTextarea{
+    width:100%;
+    height:220px;
+    font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+    font-size:11px;
+    line-height:1.5;
+    padding:10px;
+    border:1px solid var(--line);
+    border-radius:8px;
+    resize:vertical;
+    background:var(--paper);
+    color:var(--ink);
+  }
+  .export-copy{
+    background:var(--accent) !important;
+  }
+  .export-btn{
+    width:100%;
+    background:var(--accent);color:#fff;
+    border:none;border-radius:9px;
+    font-size:12.5px;font-weight:700;
+    padding:11px 6px;
+    margin-bottom:12px;
+    font-family:inherit;
+  }
 </style>
 </head>
 <body>
@@ -283,6 +409,7 @@
       <select id="spaceSelect"></select>
     </div>
   </div>
+  <button class="edit-toggle" id="editModeToggle">Edit checkpoints</button>
 </header>
 
 <main id="main"></main>
@@ -303,6 +430,18 @@
     <div class="modal-actions">
       <button class="modal-btn cancel" id="modalCancel">Cancel</button>
       <button class="modal-btn confirm" id="modalConfirm">Reset</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="exportOverlay">
+  <div class="modal-box export-box">
+    <h3>Export checkpoint list</h3>
+    <p>Copy this, then paste it over the empty <code>CHECKPOINTS_DEFAULT</code> block near the top of index.html and commit to GitHub. That's what makes it permanent and identical on every device — right now it only exists on this one.</p>
+    <textarea id="exportTextarea" readonly></textarea>
+    <div class="modal-actions">
+      <button class="modal-btn cancel" id="exportClose">Close</button>
+      <button class="modal-btn confirm export-copy" id="exportCopy">Copy</button>
     </div>
   </div>
 </div>
@@ -372,24 +511,102 @@ const BUILDINGS = [
   },
 ];
 
-const DEMO_CHECKPOINTS = {
-  emergencyLighting: ["Entrance bulkhead", "Corridor exit sign", "Stairwell unit", "Fire exit door light"],
-  fireExtinguishers: ["CO2 extinguisher — wall by entrance", "Foam extinguisher — near kitchenette"],
-  fireDoors: ["Main corridor fire door", "Kitchen fire door"],
-  waterTemp: ["Kitchen sink", "Bathroom basin"],
-};
+const CHECKPOINTS_KEY = "bigsky_compliance_checkpoints_v1";
 
-function buildCheckpoints() {
+/* CHECKPOINTS_DEFAULT is the permanent, hardcoded checkpoint list — this
+   is what EVERY visitor sees, on every device, with no setup required.
+   It starts empty. Once checkpoints are entered via Edit Mode on a
+   phone, use the "Export checkpoint list" button (visible in Edit Mode)
+   to copy the finished object and paste it in here, replacing this
+   empty one, then commit to GitHub. Until that's done, entries made in
+   Edit Mode are only saved to that one device's local storage as a
+   personal draft — they will NOT appear for anyone else, or on any
+   other device, until exported and committed. */
+const CHECKPOINTS_DEFAULT = {};
+
+function emptyCheckpointSkeleton() {
   const map = {};
   BUILDINGS.forEach(b => b.spaces.forEach(s => {
     map[s.id] = {};
-    COMPLIANCE_TYPES.forEach(t => {
-      map[s.id][t.id] = DEMO_CHECKPOINTS[t.id].map((name, i) => ({ id: t.id + "_" + i, name }));
-    });
+    COMPLIANCE_TYPES.forEach(t => { map[s.id][t.id] = []; });
   }));
   return map;
 }
-const CHECKPOINTS = buildCheckpoints();
+
+function buildFromSource(source) {
+  const skeleton = emptyCheckpointSkeleton();
+  Object.keys(skeleton).forEach(spaceId => {
+    Object.keys(skeleton[spaceId]).forEach(typeId => {
+      if (source && source[spaceId] && Array.isArray(source[spaceId][typeId])) {
+        skeleton[spaceId][typeId] = source[spaceId][typeId];
+      }
+    });
+  });
+  return skeleton;
+}
+
+function loadCheckpoints() {
+  const base = buildFromSource(CHECKPOINTS_DEFAULT);
+  try {
+    const raw = localStorage.getItem(CHECKPOINTS_KEY);
+    if (!raw) return base;
+    const parsed = JSON.parse(raw);
+    return buildFromSource(parsed);
+  } catch (e) {
+    return base;
+  }
+}
+
+function saveCheckpoints() {
+  localStorage.setItem(CHECKPOINTS_KEY, JSON.stringify(CHECKPOINTS));
+}
+
+let CHECKPOINTS = loadCheckpoints();
+
+function newCheckpointId(typeId) {
+  return typeId + "_" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+}
+
+function addCheckpoint(spaceId, typeId, name) {
+  const trimmed = name.trim();
+  if (!trimmed) return;
+  const type = COMPLIANCE_TYPES.find(t => t.id === typeId);
+  const cp = { id: newCheckpointId(typeId), name: trimmed };
+  CHECKPOINTS[spaceId][typeId].push(cp);
+  saveCheckpoints();
+
+  if (!state.items[spaceId]) state.items[spaceId] = {};
+  if (!state.items[spaceId][typeId]) state.items[spaceId][typeId] = {};
+  state.items[spaceId][typeId][cp.id] = type.kind === "passfail"
+    ? { status: "pass", notes: "" }
+    : { hot: "", cold: "", notes: "" };
+  saveState();
+}
+
+function removeCheckpoint(spaceId, typeId, checkpointId) {
+  CHECKPOINTS[spaceId][typeId] = CHECKPOINTS[spaceId][typeId].filter(cp => cp.id !== checkpointId);
+  saveCheckpoints();
+  if (state.items[spaceId] && state.items[spaceId][typeId]) {
+    delete state.items[spaceId][typeId][checkpointId];
+    saveState();
+  }
+}
+
+function generateExportCode() {
+  const lines = [];
+  lines.push("const CHECKPOINTS_DEFAULT = {");
+  BUILDINGS.forEach(b => b.spaces.forEach(s => {
+    lines.push("  " + JSON.stringify(s.id) + ": {");
+    COMPLIANCE_TYPES.forEach(t => {
+      const cps = CHECKPOINTS[s.id][t.id];
+      const itemsStr = cps.map(cp => "{ id: " + JSON.stringify(cp.id) + ", name: " + JSON.stringify(cp.name) + " }").join(", ");
+      lines.push("    " + JSON.stringify(t.id) + ": [" + itemsStr + "],");
+    });
+    lines.push("  },");
+  }));
+  lines.push("};");
+  return lines.join("\n");
+}
 
 function findSpace(spaceId) {
   for (const b of BUILDINGS) {
@@ -503,6 +720,21 @@ checkedByInput.oninput = (e) => {
 };
 
 /* ======================================================================
+   EDIT MODE — lets checkpoint names be defined/removed directly on the
+   phone, going space by space through the books, instead of being
+   hardcoded here. Resets to off on every page load so it can't be left
+   on by accident during normal weekly checks.
+   ====================================================================== */
+let editMode = false;
+let openDraft = null; // "spaceId::typeId" of the section currently showing the add-row input, or null
+
+document.getElementById("editModeToggle").onclick = () => {
+  editMode = !editMode;
+  openDraft = null;
+  render();
+};
+
+/* ======================================================================
    PICKERS
    ====================================================================== */
 function renderPickers() {
@@ -581,6 +813,19 @@ function renderMain() {
     <span class="status-pill ${issue ? "attention" : "ok"}">${issue ? "Needs attention" : "All clear"}</span>`;
   main.appendChild(banner);
 
+  if (editMode) {
+    const editBanner = document.createElement("div");
+    editBanner.className = "edit-banner";
+    editBanner.textContent = "Edit mode — set up checkpoint names for this space. Tap + to add one, \u2715 to remove one. No results are recorded while this is on.";
+    main.appendChild(editBanner);
+
+    const exportBtn = document.createElement("button");
+    exportBtn.className = "export-btn";
+    exportBtn.textContent = "Export checkpoint list (to make permanent)";
+    exportBtn.onclick = openExportModal;
+    main.appendChild(exportBtn);
+  }
+
   COMPLIANCE_TYPES.forEach(t => {
     const section = document.createElement("div");
     section.className = "section";
@@ -593,7 +838,7 @@ function renderMain() {
 
     const cps = CHECKPOINTS[space.id][t.id];
 
-    if (t.kind === "passfail" && cps.length) {
+    if (!editMode && t.kind === "passfail" && cps.length) {
       const btn = document.createElement("button");
       btn.className = "mark-all";
       btn.textContent = "Mark all pass";
@@ -606,10 +851,20 @@ function renderMain() {
     }
     section.appendChild(head);
 
-    if (!cps.length) {
+    if (editMode) {
+      if (!cps.length) {
+        const p = document.createElement("div");
+        p.className = "empty-note";
+        p.textContent = "No checkpoints yet — tap + below to add the first one.";
+        section.appendChild(p);
+      } else {
+        cps.forEach(cp => section.appendChild(renderEditItem(space.id, t.id, cp)));
+      }
+      section.appendChild(renderAddRow(space.id, t.id));
+    } else if (!cps.length) {
       const p = document.createElement("div");
       p.className = "empty-note";
-      p.textContent = "No checkpoints added yet for this space.";
+      p.textContent = "No checkpoints added yet for this space. Turn on \u201cEdit checkpoints\u201d above to set them up.";
       section.appendChild(p);
     } else if (t.kind === "passfail") {
       cps.forEach(cp => section.appendChild(renderPassFailItem(space.id, t.id, cp)));
@@ -619,6 +874,87 @@ function renderMain() {
 
     main.appendChild(section);
   });
+}
+
+function renderEditItem(spaceId, typeId, cp) {
+  const item = document.createElement("div");
+  item.className = "edit-item";
+
+  const name = document.createElement("div");
+  name.className = "edit-item-name";
+  name.textContent = cp.name;
+  item.appendChild(name);
+
+  const xBtn = document.createElement("button");
+  xBtn.className = "x-btn";
+  xBtn.textContent = "\u2715";
+  xBtn.onclick = async () => {
+    const confirmed = await showConfirmModal({
+      title: "Remove this checkpoint?",
+      message: "Remove \u201c" + cp.name + "\u201d?\n\nAny result already recorded for it will be deleted too. This can't be undone.",
+      confirmLabel: "Remove"
+    });
+    if (confirmed) {
+      removeCheckpoint(spaceId, typeId, cp.id);
+      render();
+    }
+  };
+  item.appendChild(xBtn);
+
+  return item;
+}
+
+function renderAddRow(spaceId, typeId) {
+  const wrap = document.createElement("div");
+  wrap.className = "add-row";
+  const draftKey = spaceId + "::" + typeId;
+  const isOpen = openDraft === draftKey;
+
+  if (!isOpen) {
+    const plusBtn = document.createElement("button");
+    plusBtn.className = "add-plus-btn";
+    plusBtn.textContent = "+";
+    plusBtn.setAttribute("aria-label", "Add checkpoint");
+    plusBtn.onclick = () => { openDraft = draftKey; render(); };
+    wrap.appendChild(plusBtn);
+    return wrap;
+  }
+
+  const closeBtn = document.createElement("button");
+  closeBtn.className = "add-plus-btn is-open";
+  closeBtn.textContent = "\u2715";
+  closeBtn.setAttribute("aria-label", "Close");
+  closeBtn.onclick = () => { openDraft = null; render(); };
+  wrap.appendChild(closeBtn);
+
+  const form = document.createElement("form");
+  form.className = "add-form";
+  form.onsubmit = (e) => { e.preventDefault(); confirmAdd(); };
+
+  const input = document.createElement("input");
+  input.type = "text";
+  input.placeholder = "New checkpoint name";
+  form.appendChild(input);
+
+  const confirmBtn = document.createElement("button");
+  confirmBtn.type = "submit";
+  confirmBtn.className = "add-confirm-btn";
+  confirmBtn.textContent = "\u2713";
+  confirmBtn.setAttribute("aria-label", "Add");
+  form.appendChild(confirmBtn);
+
+  function confirmAdd() {
+    const value = input.value.trim();
+    if (!value) { input.focus(); return; }
+    addCheckpoint(spaceId, typeId, value);
+    // openDraft is already this draftKey, so re-rendering reopens the
+    // add-row with a fresh, empty, auto-focused input for the next entry.
+    render();
+  }
+
+  wrap.appendChild(form);
+  setTimeout(() => input.focus(), 0);
+  return wrap;
 }
 
 function renderPassFailItem(spaceId, typeId, cp) {
@@ -718,6 +1054,9 @@ function render() {
   if (found) {
     document.getElementById("resetBtn").textContent = "Reset \u201c" + found.space.name + "\u201d data";
   }
+  const editBtn = document.getElementById("editModeToggle");
+  editBtn.textContent = editMode ? "Done editing checkpoints" : "Edit checkpoints";
+  editBtn.classList.toggle("active", editMode);
 }
 
 /* ======================================================================
@@ -889,6 +1228,30 @@ function showToast(msg) {
   t.classList.add("show");
   setTimeout(() => t.classList.remove("show"), 2200);
 }
+
+function openExportModal() {
+  const overlay = document.getElementById("exportOverlay");
+  document.getElementById("exportTextarea").value = generateExportCode();
+  overlay.classList.add("show");
+}
+
+document.getElementById("exportClose").onclick = () => {
+  document.getElementById("exportOverlay").classList.remove("show");
+};
+document.getElementById("exportOverlay").addEventListener("click", (e) => {
+  if (e.target.id === "exportOverlay") document.getElementById("exportOverlay").classList.remove("show");
+});
+document.getElementById("exportCopy").onclick = async () => {
+  const ta = document.getElementById("exportTextarea");
+  ta.focus();
+  ta.select();
+  try {
+    await navigator.clipboard.writeText(ta.value);
+    showToast("Copied — paste it to Claude to make it permanent");
+  } catch (e) {
+    showToast("Couldn't auto-copy — text is selected, copy manually");
+  }
+};
 
 function showConfirmModal({ title, message, confirmLabel }) {
   return new Promise((resolve) => {
