@@ -922,7 +922,22 @@ function loadCheckpoints() {
     const raw = localStorage.getItem(CHECKPOINTS_KEY);
     if (!raw) return base;
     const parsed = JSON.parse(raw);
-    return buildFromSource(parsed);
+    // The local draft only overrides a space+type when it actually has
+    // checkpoints in it. An empty local array must NOT blank out real
+    // hardcoded data — that's what happens if a stale local snapshot
+    // (saved back when a space genuinely had nothing yet) sticks around
+    // on a device after that space is later baked into the page for
+    // real. Hardcoded data is always the floor; local edits only ever
+    // add on top of it, never silently erase it.
+    Object.keys(base).forEach(spaceId => {
+      Object.keys(base[spaceId]).forEach(typeId => {
+        const localEntry = parsed[spaceId] && parsed[spaceId][typeId];
+        if (Array.isArray(localEntry) && localEntry.length > 0) {
+          base[spaceId][typeId] = localEntry;
+        }
+      });
+    });
+    return base;
   } catch (e) {
     return base;
   }
