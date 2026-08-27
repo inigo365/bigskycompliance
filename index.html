@@ -1751,7 +1751,14 @@ async function syncFlaggedItemsForSpace(space, types) {
 
   if (toPush.length) {
     savePushed();
-    await Promise.allSettled(toPush.map(pushMaintenanceAction));
+    // Sent one at a time, not all at once — Google Apps Script's
+    // appendRow() isn't safe against simultaneous writes and was
+    // silently dropping rows when several landed on the sheet at the
+    // same instant (this is why it was consistently a couple of items
+    // going missing out of a batch, not random data loss).
+    for (const item of toPush) {
+      await pushMaintenanceAction(item);
+    }
     await silentRefreshMaintenanceList(); // refresh the shared cache so badges update immediately
   }
   return toPush.length;
