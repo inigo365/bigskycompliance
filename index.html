@@ -224,6 +224,12 @@
   }
   .status-pill.ok{background:var(--pass-soft);color:var(--pass);}
   .status-pill.attention{background:var(--fail-soft);color:var(--fail);}
+  .space-status-col{
+    display:flex;flex-direction:column;align-items:flex-end;gap:4px;
+  }
+  .last-checked-tag{
+    font-size:10.5px;color:var(--muted);white-space:nowrap;
+  }
 
   .section{
     background:var(--card);
@@ -1238,12 +1244,16 @@ function renderMain() {
   const banner = document.createElement("div");
   banner.className = "space-banner";
   const issue = spaceHasIssue(space.id);
+  const lastCheckedText = formatLastChecked(getLastCheckedSummary(space));
   banner.innerHTML = `
     <div>
       <h2>${space.name}</h2>
       <div class="lbl">${building.name}</div>
     </div>
-    <span class="status-pill ${issue ? "attention" : "ok"}">${issue ? "Needs attention" : "All clear"}</span>`;
+    <div class="space-status-col">
+      <span class="status-pill ${issue ? "attention" : "ok"}">${issue ? "Needs attention" : "All clear"}</span>
+      ${lastCheckedText ? `<div class="last-checked-tag">${lastCheckedText}</div>` : ""}
+    </div>`;
   main.appendChild(banner);
 
   if (editMode) {
@@ -1661,7 +1671,22 @@ document.getElementById("maintRefreshBtn").onclick = () => loadMaintenanceList()
 
 /* ---- fetching + caching the shared list ---- */
 let maintenanceItems = null; // null = not loaded yet
+let checkLogItems = null; // null = not loaded yet
 let maintenanceError = false;
+
+function parseMaintenanceResponse_(data) {
+  // New shape: { maintenance: [...], checkLog: [...] }. Old shape (before
+  // the check-log feature existed) was just a bare array — handled here
+  // too so nothing breaks if the app and script get updated a moment
+  // apart from each other.
+  if (Array.isArray(data)) {
+    return { maintenance: data, checkLog: [] };
+  }
+  return {
+    maintenance: Array.isArray(data.maintenance) ? data.maintenance : [],
+    checkLog: Array.isArray(data.checkLog) ? data.checkLog : []
+  };
+}
 
 async function loadMaintenanceList() {
   maintenanceItems = null;
@@ -1670,10 +1695,13 @@ async function loadMaintenanceList() {
   try {
     const res = await fetch(MAINTENANCE_API_URL, { method: "GET" });
     const data = await res.json();
-    maintenanceItems = Array.isArray(data) ? data : [];
+    const parsed = parseMaintenanceResponse_(data);
+    maintenanceItems = parsed.maintenance;
+    checkLogItems = parsed.checkLog;
   } catch (e) {
     maintenanceError = true;
     maintenanceItems = [];
+    checkLogItems = [];
   }
   render();
 }
@@ -1685,11 +1713,11 @@ async function silentRefreshMaintenanceList() {
   try {
     const res = await fetch(MAINTENANCE_API_URL, { method: "GET" });
     const data = await res.json();
-    if (Array.isArray(data)) {
-      maintenanceItems = data;
-      maintenanceError = false;
-      render();
-    }
+    const parsed = parseMaintenanceResponse_(data);
+    maintenanceItems = parsed.maintenance;
+    checkLogItems = parsed.checkLog;
+    maintenanceError = false;
+    render();
   } catch (e) {
     // silent — keep whatever's already cached rather than showing an error
   }
@@ -1702,6 +1730,62 @@ async function silentRefreshMaintenanceList() {
 function openMaintenanceForCheckpoint(checkpointId) {
   if (!maintenanceItems) return null;
   return maintenanceItems.find(it => it.Status === "Open" && it["Checkpoint ID"] === checkpointId) || null;
+}
+
+// Works out a single "last checked" summary for a space, based on the
+// OLDEST last-checked date among its compliance types that actually
+// have checkpoints (types with nothing to check don't count against
+// it). If any applicable type has never been checked at all, the whole
+// space reads as "Not yet checked" — a space isn't really done for the
+// month just because 3 of its 4 sections have been.
+function getLastCheckedSummary(space) {
+  if (!checkLogItems) return null; // not loaded yet — render nothing rather than a wrong guess
+  const applicableTypes = COMPLIANCE_TYPES.filter(t => CHECKPOINTS[space.id][t.id].length > 0);
+  if (!applicableTypes.length) return { status: "none" }; // nothing set up yet for this space at all
+
+  let oldest = null;
+  for (const t of applicableTypes) {
+    const entry = checkLogItems.find(it => it.Space === space.name && it["Compliance Type"] === t.id);
+    if (!entry || !entry["Last Checked"]) return { status: "never" };
+    const d = new Date(entry["Last Checked"]);
+    if (isNaN(d.getTime())) return { status: "never" };
+    if (!oldest || d < oldest) oldest = d;
+  }
+  return { status: "checked", date: oldest };
+}
+
+function formatLastChecked(summary) {
+  if (!summary || summary.status === "none") return null;
+  if (summary.status === "never") return "Not yet checked";
+  return "Last checked " + summary.date.toLocaleDateString("en-GB", { day: "numeric", month: "short" });
+}
+
+async function logCheckAction(payload) {
+  try {
+    const res = await fetch(MAINTENANCE_API_URL, {
+      method: "POST",
+      headers: { "Content-Type": "text/plain;charset=utf-8" },
+      body: JSON.stringify(payload)
+    });
+    return res.ok;
+  } catch (e) {
+    return false;
+  }
+}
+
+async function logChecksForSpace(space, types) {
+  const checkedBy = (ui.checkedBy || "").trim();
+  const checkedAt = new Date().toISOString();
+  for (const type of types) {
+    await logCheckAction({
+      action: "logCheck",
+      space: space.name,
+      complianceType: type.id,
+      checkedAt: checkedAt,
+      checkedBy: checkedBy
+    });
+  }
+  await silentRefreshMaintenanceList();
 }
 
 async function pushMaintenanceAction(payload) {
@@ -1863,10 +1947,14 @@ function renderMaintenanceView() {
 
     const head = document.createElement("div");
     head.className = "maint-space-head";
+    const lastCheckedText = formatLastChecked(getLastCheckedSummary(space));
     head.innerHTML =
       "<h3>" + space.name + "</h3>" +
+      "<div class=\"space-status-col\">" +
       "<span class=\"maint-count" + (items.length ? "" : " zero") + "\">" +
-      (items.length ? items.length + " open" : "Clear") + "</span>";
+      (items.length ? items.length + " open" : "Clear") + "</span>" +
+      (lastCheckedText ? "<div class=\"last-checked-tag\">" + lastCheckedText + "</div>" : "") +
+      "</div>";
     head.onclick = () => {
       if (openMaintSpaces.has(space.id)) openMaintSpaces.delete(space.id);
       else openMaintSpaces.add(space.id);
@@ -2180,6 +2268,7 @@ async function generateSpacePDFs() {
         showToast(count + " item" + (count === 1 ? "" : "s") + " added to Maintenance List");
       }
     });
+    logChecksForSpace(space, selectedTypes);
   }
 
   // Primary path: the native share sheet — phones only. Desktop browsers
