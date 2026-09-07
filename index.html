@@ -225,10 +225,18 @@
   .status-pill.ok{background:var(--pass-soft);color:var(--pass);}
   .status-pill.attention{background:var(--fail-soft);color:var(--fail);}
   .space-status-col{
-    display:flex;flex-direction:column;align-items:flex-end;gap:4px;
+    display:flex;flex-direction:row;align-items:center;gap:6px;
+    flex-wrap:wrap;justify-content:flex-end;
   }
   .last-checked-tag{
-    font-size:10.5px;color:var(--muted);white-space:nowrap;
+    font-size:10.5px;font-weight:700;
+    padding:4px 10px;border-radius:999px;
+    white-space:nowrap;
+    background:var(--paper);color:var(--muted);
+    border:1px solid var(--line);
+  }
+  .last-checked-tag.never{
+    background:#fdf3d9;color:#b8860b;border-color:#eddca0;
   }
 
   .section{
@@ -899,10 +907,10 @@ const CHECKPOINTS_DEFAULT = {
     "waterTemp": [{ id: "waterTemp_msxbn3q6cgqx", name: "Hair Basin" }, { id: "waterTemp_msxbn686zcyn", name: "Kitchen" }, { id: "waterTemp_msxbn8c2deb7", name: "Toilet 1" }, { id: "waterTemp_msxbnbqok3ch", name: "Toilet 2" }, { id: "waterTemp_msxbne7z2mde", name: "Toilet 3" }],
   },
   "br1_communal": {
-    "emergencyLighting": [],
-    "fireExtinguishers": [],
-    "fireDoors": [],
-    "waterTemp": [],
+    "emergencyLighting": [{ id: "emergencyLighting_mtr8fxcfsgsc", name: "Reception Vestibule" }, { id: "emergencyLighting_mtr8fzey0285", name: "Reception" }, { id: "emergencyLighting_mtr8g35gop6c", name: "Noco 1" }, { id: "emergencyLighting_mtr8g4zhmovf", name: "Noco 2" }, { id: "emergencyLighting_mtr8g6n4i4za", name: "Noco 3" }, { id: "emergencyLighting_mtr8gpbr15fx", name: "M&S Hallway" }, { id: "emergencyLighting_mtr8gyrs84yn", name: "M&S Office 1" }, { id: "emergencyLighting_mtr8h1g3wt19", name: "M&S Office 2" }, { id: "emergencyLighting_mtr8h4u3e2rn", name: "Staff Room" }, { id: "emergencyLighting_mtr8h87qtblk", name: "Cafe" }, { id: "emergencyLighting_mtr8hct5gi4u", name: "Floor 2 Corridor" }, { id: "emergencyLighting_mtr8hgaly7rw", name: "Floor 3 Corridor" }, { id: "emergencyLighting_mtr8hk6fatxs", name: "Space A" }, { id: "emergencyLighting_mtr8hp4nkrgl", name: "Goods Lift Motor Room" }, { id: "emergencyLighting_mtr8hvid6zgl", name: "Passenger Lift Motor Room" }],
+    "fireExtinguishers": [{ id: "fireExtinguishers_mtr8brpoph5q", name: "Reception Vestibule", extType: "foam" }, { id: "fireExtinguishers_mtr8bthvwebd", name: "Reception Vestibule", extType: "co2" }, { id: "fireExtinguishers_mtr8bx9bj6ee", name: "Reception", extType: "co2" }, { id: "fireExtinguishers_mtr8bytx9qph", name: "Reception", extType: "foam" }, { id: "fireExtinguishers_mtr8c6k4h6fm", name: "M&S Corridor", extType: "foam" }, { id: "fireExtinguishers_mtr8c94aydg8", name: "M&S Corridor", extType: "co2" }, { id: "fireExtinguishers_mtr8cqfzcyr4", name: "M&S Stairwell", extType: "co2" }, { id: "fireExtinguishers_mtr8cs7uosae", name: "M&S Stairwell", extType: "foam" }, { id: "fireExtinguishers_mtr8cu4nrcpt", name: "M&S Stairwell", extType: "water" }, { id: "fireExtinguishers_mtr8d4qmrmqj", name: "Floor 2 Corridor Main", extType: "foam" }, { id: "fireExtinguishers_mtr8d67zufrl", name: "Floor 2 Corridor Main", extType: "co2" }, { id: "fireExtinguishers_mtr8dagrwghn", name: "Floor 2 Corridor Back", extType: "co2" }, { id: "fireExtinguishers_mtr8dc2ax237", name: "Floor 2 Corridor Back", extType: "foam" }, { id: "fireExtinguishers_mtr8dl8nkvpt", name: "Noco Main", extType: "foam" }, { id: "fireExtinguishers_mtr8dn38qr30", name: "Noco Main", extType: "co2" }, { id: "fireExtinguishers_mtr8e0nskexa", name: "Noco Entrance", extType: "co2" }, { id: "fireExtinguishers_mtr8e24f2dvs", name: "Noco Entrance", extType: "foam" }, { id: "fireExtinguishers_mtr8e7ohikkw", name: "Noco Back Entrance", extType: "wetChemical" }, { id: "fireExtinguishers_mtr8efk4646k", name: "Space A", extType: "foam" }, { id: "fireExtinguishers_mtr8ehfyrrgt", name: "Space A", extType: "co2" }, { id: "fireExtinguishers_mtr8ek4ktfb7", name: "Space B", extType: "co2" }, { id: "fireExtinguishers_mtr8ellht9ng", name: "Space B", extType: "foam" }, { id: "fireExtinguishers_mtr8ensg35v6", name: "Space C", extType: "foam" }, { id: "fireExtinguishers_mtr8epfbxfhd", name: "Space C", extType: "co2" }],
+    "fireDoors": [{ id: "fireDoors_mtr87oe1mfvx", name: "Reception Vestibule" }, { id: "fireDoors_mtr87tb6nx4r", name: "Noco 1" }, { id: "fireDoors_mtr87v9vkbin", name: "Noco 2" }, { id: "fireDoors_mtr87x8s9qt8", name: "Noco 3" }, { id: "fireDoors_mtr8833ungrs", name: "M&S Hallway" }, { id: "fireDoors_mtr889hth8yh", name: "M&S Office 1" }, { id: "fireDoors_mtr88catsui1", name: "M&S Office 2" }, { id: "fireDoors_mtr88g8p59de", name: "S1 Hallway" }, { id: "fireDoors_mtr88kdjm18l", name: "Floor 2 Corridor" }, { id: "fireDoors_mtr88p19jc47", name: "Staff Room" }, { id: "fireDoors_mtr88u7qlsky", name: "Floor 3 Corridor" }, { id: "fireDoors_mtr88yz4hh8g", name: "Space A 1" }, { id: "fireDoors_mtr891q6qrvl", name: "Space A 2" }],
+    "waterTemp": [{ id: "waterTemp_mtr8a7lrdg33", name: "Staff Kitchen" }, { id: "waterTemp_mtr8ab83m10z", name: "Cafe Sink" }, { id: "waterTemp_mtr8antdior2", name: "Mens Bathroom Sink 1" }, { id: "waterTemp_mtr8aq8qxf12", name: "Mens Bathroom Sink 2" }, { id: "waterTemp_mtr8asvmqi8v", name: "Mens Bathroom Sink 3" }, { id: "waterTemp_mtr8ax1yfr0d", name: "Womens Bathroom Sink 1" }, { id: "waterTemp_mtr8b74jjbho", name: "Womens Bathroom Sink 2" }, { id: "waterTemp_mtr8b9ycse9d", name: "Womens Bathroom Sink 3" }],
   },
   "br2_communal": {
     "emergencyLighting": [{ id: "emergencyLighting_mta5jdsn9rr1", name: "PF Kitchen 1" }, { id: "emergencyLighting_mta5jgh4zdxc", name: "PF Kitchen 2" }, { id: "emergencyLighting_mta5jl1u5vl6", name: "PF Kitchen 3" }, { id: "emergencyLighting_mta5jnt3n9rc", name: "PF Kitchen 4" }, { id: "emergencyLighting_mta5jxv487pr", name: "PF Kitchen 5" }, { id: "emergencyLighting_mta5k23o3ht5", name: "Meeting Room 1" }, { id: "emergencyLighting_mta5k5ktx3ef", name: "Meeting Room 2" }, { id: "emergencyLighting_mta5k8ixql6b", name: "Meeting Room 3" }, { id: "emergencyLighting_mta5kktetwwh", name: "Upstairs Toilet 1" }, { id: "emergencyLighting_mta5ko0c8ikw", name: "Upstairs Toilet 2" }, { id: "emergencyLighting_mta5kskhypeg", name: "Entrance Toilet" }, { id: "emergencyLighting_mta5l52scdc7", name: "Stairwell Entrance" }, { id: "emergencyLighting_mta5lbxagdvz", name: "Rear Stairwell" }, { id: "emergencyLighting_mta5le5mvuwm", name: "Fish Tank" }, { id: "emergencyLighting_mta5lr3ubcy2", name: "PF Office Main 1" }, { id: "emergencyLighting_mta5lttwfojk", name: "PF Office Main 2" }, { id: "emergencyLighting_mta5lxc21pj2", name: "PF Office Main 3" }, { id: "emergencyLighting_mta5m3b7kw7r", name: "BR2 Reception" }, { id: "emergencyLighting_mta5m9y3o1b4", name: "BR2 Reception 2" }],
@@ -917,10 +925,10 @@ const CHECKPOINTS_DEFAULT = {
     "waterTemp": [{ id: "waterTemp_mta59bfey72x", name: "Kitchen Sink" }, { id: "waterTemp_mta59ecd1y3t", name: "Toilet 1" }, { id: "waterTemp_mta59gl2ilh1", name: "Toilet 2" }],
   },
   "b30_communal": {
-    "emergencyLighting": [],
-    "fireExtinguishers": [],
-    "fireDoors": [],
-    "waterTemp": [],
+    "emergencyLighting": [{ id: "emergencyLighting_mtr849iy2zw9", name: "Collections 1" }, { id: "emergencyLighting_mtr84h9ddjil", name: "Collections 1 Exit Sign" }, { id: "emergencyLighting_mtr84lqiby09", name: "Collections 2" }, { id: "emergencyLighting_mtr84q0mgr1n", name: "Collections 2 Exit Sign" }, { id: "emergencyLighting_mtr84ux3rbcc", name: "Collections 3" }, { id: "emergencyLighting_mtr84zj84eqg", name: "Collections 3 Exit Sign" }, { id: "emergencyLighting_mtr854pd7hov", name: "Loading Bay Main" }, { id: "emergencyLighting_mtr85847l7yf", name: "Loading Bay Exit" }, { id: "emergencyLighting_mtr85be4tnoh", name: "Shower Room" }, { id: "emergencyLighting_mtr85emayaky", name: "Coms Room" }, { id: "emergencyLighting_mtr85i4o1r8e", name: "Main Space 1" }, { id: "emergencyLighting_mtr85kx2ktcg", name: "Main Space 2" }, { id: "emergencyLighting_mtr85owirwat", name: "Main Space 3" }],
+    "fireExtinguishers": [{ id: "fireExtinguishers_mtr8285nn7fm", name: "Main Communal Area", extType: "water" }, { id: "fireExtinguishers_mtr82dtlgwaf", name: "Main Communal Area", extType: "co2" }, { id: "fireExtinguishers_mtr82l75wddg", name: "Production Office", extType: "co2" }, { id: "fireExtinguishers_mtr82nk0lg6z", name: "Production Office", extType: "water" }, { id: "fireExtinguishers_mtr82wgnd9zb", name: "Coms Room", extType: "co2" }, { id: "fireExtinguishers_mtr839dzhpy3", name: "Outside Collections 2", extType: "co2" }, { id: "fireExtinguishers_mtr83biax1iy", name: "Outside Collections 2", extType: "lithium" }, { id: "fireExtinguishers_mtr83jvej4mm", name: "Loading Bay", extType: "co2" }, { id: "fireExtinguishers_mtr83msxggdd", name: "Loading Bay", extType: "water" }],
+    "fireDoors": [{ id: "fireDoors_mtr81kjd406s", name: "Plant Room" }, { id: "fireDoors_mtr81pk87gzt", name: "Main Communal Area" }],
+    "waterTemp": [{ id: "waterTemp_mtr812xptk0p", name: "Kitchen Sink" }, { id: "waterTemp_mtr815dg9kpq", name: "Toilet 1" }, { id: "waterTemp_mtr81774xtyn", name: "Toilet 2" }, { id: "waterTemp_mtr8193l49h6", name: "Toilet 3" }],
   },
 };
 
@@ -1244,7 +1252,6 @@ function renderMain() {
   const banner = document.createElement("div");
   banner.className = "space-banner";
   const issue = spaceHasIssue(space.id);
-  const lastCheckedText = formatLastChecked(getLastCheckedSummary(space));
   banner.innerHTML = `
     <div>
       <h2>${space.name}</h2>
@@ -1252,7 +1259,7 @@ function renderMain() {
     </div>
     <div class="space-status-col">
       <span class="status-pill ${issue ? "attention" : "ok"}">${issue ? "Needs attention" : "All clear"}</span>
-      ${lastCheckedText ? `<div class="last-checked-tag">${lastCheckedText}</div>` : ""}
+      ${lastCheckedTagHTML(getLastCheckedSummary(space))}
     </div>`;
   main.appendChild(banner);
 
@@ -1760,6 +1767,13 @@ function formatLastChecked(summary) {
   return "Last checked " + summary.date.toLocaleDateString("en-GB", { day: "numeric", month: "short" });
 }
 
+function lastCheckedTagHTML(summary) {
+  const text = formatLastChecked(summary);
+  if (!text) return "";
+  const isNever = summary.status === "never";
+  return "<span class=\"last-checked-tag" + (isNever ? " never" : "") + "\">" + text + "</span>";
+}
+
 async function logCheckAction(payload) {
   try {
     const res = await fetch(MAINTENANCE_API_URL, {
@@ -1947,13 +1961,12 @@ function renderMaintenanceView() {
 
     const head = document.createElement("div");
     head.className = "maint-space-head";
-    const lastCheckedText = formatLastChecked(getLastCheckedSummary(space));
     head.innerHTML =
       "<h3>" + space.name + "</h3>" +
       "<div class=\"space-status-col\">" +
       "<span class=\"maint-count" + (items.length ? "" : " zero") + "\">" +
       (items.length ? items.length + " open" : "Clear") + "</span>" +
-      (lastCheckedText ? "<div class=\"last-checked-tag\">" + lastCheckedText + "</div>" : "") +
+      lastCheckedTagHTML(getLastCheckedSummary(space)) +
       "</div>";
     head.onclick = () => {
       if (openMaintSpaces.has(space.id)) openMaintSpaces.delete(space.id);
