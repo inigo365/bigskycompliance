@@ -2284,6 +2284,34 @@ async function generateSpacePDFs() {
     logChecksForSpace(space, selectedTypes);
   }
 
+  // Tries the share sheet, and if it fails for any reason other than
+  // the user cancelling, tries once more immediately — no deliberate
+  // pause in between, since an explicit wait (setTimeout etc.) can
+  // itself break iOS's "this came from a real tap" tracking, which is
+  // the exact class of bug this is working around. Some share-target
+  // extensions (Google Drive's among them) intermittently fail on a
+  // cold start the first time they're invoked in a while — a generic
+  // OS-level error with no explanation — but succeed immediately once
+  // already warmed up, which an instant retry captures automatically
+  // instead of requiring a second manual attempt.
+  async function tryShareWithRetry(files, title, maxAttempts) {
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      try {
+        await navigator.share({ files: files, title: title });
+        return { success: true };
+      } catch (err) {
+        if (err && err.name === "AbortError") {
+          return { success: false, cancelled: true };
+        }
+        if (attempt === maxAttempts) {
+          return { success: false, cancelled: false };
+        }
+        // loop straight into the next attempt, no delay
+      }
+    }
+    return { success: false, cancelled: false };
+  }
+
   // Primary path: the native share sheet — phones only. Desktop browsers
   // increasingly support the same Web Share API now, which was making
   // the app pop an OS-level share flyout on laptops too instead of just
@@ -2293,17 +2321,21 @@ async function generateSpacePDFs() {
   try {
     const files = docs.map(d => new File([d.blob], d.filename, { type: "application/pdf" }));
     if (isMobileDevice() && navigator.canShare && navigator.canShare({ files })) {
-      await navigator.share({ files: files, title: "Big Sky Compliance — " + space.name });
-      finish("Share sheet closed for " + space.name);
-      runBackgroundSync();
-      return;
+      const result = await tryShareWithRetry(files, "Big Sky Compliance — " + space.name, 2);
+      if (result.success) {
+        finish("Share sheet closed for " + space.name);
+        runBackgroundSync();
+        return;
+      }
+      if (result.cancelled) {
+        finish("Share cancelled");
+        runBackgroundSync();
+        return;
+      }
+      // both attempts failed for a genuine reason — fall through to
+      // the direct-download fallback below
     }
   } catch (err) {
-    if (err && err.name === "AbortError") {
-      finish("Share cancelled");
-      runBackgroundSync();
-      return;
-    }
     // otherwise fall through to the direct-download fallback below
   }
 
