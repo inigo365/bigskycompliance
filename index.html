@@ -149,12 +149,34 @@
   }
 
   .edit-item{
-    display:flex;align-items:center;justify-content:space-between;gap:10px;
+    display:flex;align-items:center;gap:10px;
     padding:10px 0;
     border-bottom:1px solid var(--line);
+    -webkit-user-select:none;user-select:none;
+    -webkit-touch-callout:none;
   }
   .edit-item:last-child{border-bottom:none;}
   .edit-item .edit-item-name{font-size:13.5px;flex:1;line-height:1.35;}
+  .drag-handle{
+    flex:0 0 auto;
+    width:22px;height:34px;
+    display:flex;align-items:center;justify-content:center;
+    color:var(--muted);opacity:.5;
+    font-size:15px;letter-spacing:-3px;line-height:1;
+    cursor:grab;touch-action:none;
+    margin-left:-4px;
+  }
+  .drag-handle:active{cursor:grabbing;opacity:.85;}
+  .edit-actions{display:flex;align-items:center;gap:8px;flex:0 0 auto;}
+  .edit-pencil-btn{
+    flex:0 0 auto;
+    width:26px;height:26px;
+    border-radius:50%;
+    border:1px solid var(--line);
+    background:var(--card);
+    color:var(--muted);
+    font-size:13px;line-height:1;
+  }
   .x-btn{
     flex:0 0 auto;
     width:26px;height:26px;
@@ -165,6 +187,26 @@
     font-size:13px;font-weight:700;
     line-height:1;
   }
+  .edit-item.dragging{
+    position:fixed;z-index:60;
+    box-sizing:border-box;
+    margin:0;padding:10px 12px;
+    background:var(--card);
+    border:1px solid var(--line);
+    border-radius:12px;
+    box-shadow:0 12px 28px rgba(0,0,0,.20);
+    pointer-events:none;
+  }
+  .edit-item-placeholder{
+    box-sizing:border-box;
+    border:1px dashed var(--accent);
+    background:var(--accent-soft);
+    border-radius:10px;
+    margin:4px 0;
+  }
+  .edit-item.editing{align-items:flex-start;}
+  .edit-inline-form{flex:1;min-width:0;}
+  body.dragging-active{-webkit-user-select:none;user-select:none;}
 
   .add-row{
     display:flex;align-items:center;gap:8px;
@@ -1017,6 +1059,33 @@ function removeCheckpoint(spaceId, typeId, checkpointId) {
   }
 }
 
+// Rename a checkpoint in place (and, for extinguishers, change its type).
+// The id never changes, so any result already recorded against it — plus
+// its position in the list — is preserved untouched.
+function editCheckpoint(spaceId, typeId, checkpointId, newName, newExtType) {
+  const trimmed = (newName || "").trim();
+  if (!trimmed) return;
+  const cp = CHECKPOINTS[spaceId][typeId].find(c => c.id === checkpointId);
+  if (!cp) return;
+  cp.name = trimmed;
+  if (typeId === "fireExtinguishers" && newExtType) cp.extType = newExtType;
+  saveCheckpoints();
+}
+
+// Reorder a type's checkpoints to match a list of ids (as produced by a
+// drag-and-drop). Ids not present in the new order are appended in their
+// existing order as a safety net, so nothing can ever be dropped.
+function reorderCheckpoints(spaceId, typeId, orderedIds) {
+  const arr = CHECKPOINTS[spaceId][typeId];
+  const byId = {};
+  arr.forEach(cp => { byId[cp.id] = cp; });
+  const next = [];
+  orderedIds.forEach(id => { if (byId[id]) { next.push(byId[id]); delete byId[id]; } });
+  arr.forEach(cp => { if (byId[cp.id]) next.push(cp); });
+  CHECKPOINTS[spaceId][typeId] = next;
+  saveCheckpoints();
+}
+
 function generateExportCode() {
   const lines = [];
   lines.push("const CHECKPOINTS_DEFAULT = {");
@@ -1169,12 +1238,14 @@ checkedByInput.oninput = (e) => {
    on by accident during normal weekly checks.
    ====================================================================== */
 let editMode = false;
+let editingCp = null; // "spaceId::typeId::cpId" of the checkpoint being renamed inline, or null
 let openDraft = null; // "spaceId::typeId" of the section currently showing the add-row input, or null
 let openTypeSections = new Set(); // "spaceId::typeId" keys — closed by default for every space
 
 document.getElementById("editModeToggle").onclick = () => {
   editMode = !editMode;
   openDraft = null;
+  editingCp = null;
   render();
 };
 document.getElementById("exportAllBtn").onclick = () => openExportModal("all");
@@ -1266,7 +1337,7 @@ function renderMain() {
   if (editMode) {
     const editBanner = document.createElement("div");
     editBanner.className = "edit-banner";
-    editBanner.textContent = "Edit mode — set up checkpoint names for this space. Tap + to add one, \u2715 to remove one. No results are recorded while this is on.";
+    editBanner.textContent = "Edit mode — tap + to add, the pencil to rename, \u2715 to remove. Press and hold a row (or grab the \u22ee\u22ee handle) to drag it into a new order. No results are recorded while this is on.";
     main.appendChild(editBanner);
   }
 
@@ -1367,8 +1438,18 @@ function appendExtTag(container, cp) {
 }
 
 function renderEditItem(spaceId, typeId, cp) {
+  const editKey = spaceId + "::" + typeId + "::" + cp.id;
+  if (editingCp === editKey) return renderEditItemForm(spaceId, typeId, cp);
+
   const item = document.createElement("div");
   item.className = "edit-item";
+  item.dataset.cpId = cp.id;
+
+  const handle = document.createElement("div");
+  handle.className = "drag-handle";
+  handle.setAttribute("aria-label", "Drag to reorder");
+  handle.innerHTML = "&#8942;&#8942;"; // two vertical ellipses = a grip
+  item.appendChild(handle);
 
   const name = document.createElement("div");
   name.className = "edit-item-name";
@@ -1376,10 +1457,26 @@ function renderEditItem(spaceId, typeId, cp) {
   name.appendChild(document.createTextNode(cp.name));
   item.appendChild(name);
 
+  const actions = document.createElement("div");
+  actions.className = "edit-actions";
+
+  const editBtn = document.createElement("button");
+  editBtn.className = "edit-pencil-btn";
+  editBtn.setAttribute("aria-label", "Rename checkpoint");
+  editBtn.innerHTML = "&#9998;"; // pencil
+  editBtn.onclick = (e) => {
+    e.stopPropagation();
+    editingCp = editKey;
+    openDraft = null;
+    render();
+  };
+  actions.appendChild(editBtn);
+
   const xBtn = document.createElement("button");
   xBtn.className = "x-btn";
   xBtn.textContent = "\u2715";
-  xBtn.onclick = async () => {
+  xBtn.onclick = async (e) => {
+    e.stopPropagation();
     const confirmed = await showConfirmModal({
       title: "Remove this checkpoint?",
       message: "Remove \u201c" + cp.name + "\u201d?\n\nAny result already recorded for it will be deleted too. This can't be undone.",
@@ -1390,9 +1487,227 @@ function renderEditItem(spaceId, typeId, cp) {
       render();
     }
   };
-  item.appendChild(xBtn);
+  actions.appendChild(xBtn);
+  item.appendChild(actions);
+
+  // Only wire up dragging when no row is mid-rename, so an open text
+  // field can't be yanked out from under the user.
+  if (editingCp === null) attachDragReorder(item, handle, spaceId, typeId, cp.id);
 
   return item;
+}
+
+function renderEditItemForm(spaceId, typeId, cp) {
+  const isExtinguisher = typeId === "fireExtinguishers";
+  const wrap = document.createElement("div");
+  wrap.className = "edit-item editing";
+
+  const formWrap = document.createElement("div");
+  formWrap.className = "edit-inline-form";
+
+  let typeSelect = null;
+  if (isExtinguisher) {
+    typeSelect = document.createElement("select");
+    typeSelect.className = "ext-type-select";
+    EXTINGUISHER_TYPES.forEach(ext => {
+      const opt = document.createElement("option");
+      opt.value = ext.id;
+      opt.textContent = ext.label;
+      typeSelect.appendChild(opt);
+    });
+    typeSelect.value = cp.extType || "";
+    formWrap.appendChild(typeSelect);
+  }
+
+  const form = document.createElement("form");
+  form.className = "add-form";
+  form.onsubmit = (e) => { e.preventDefault(); commit(); };
+
+  const input = document.createElement("input");
+  input.type = "text";
+  input.value = cp.name;
+  input.placeholder = isExtinguisher ? "Location, e.g. Wall by entrance" : "Checkpoint name";
+  form.appendChild(input);
+
+  const confirmBtn = document.createElement("button");
+  confirmBtn.type = "submit";
+  confirmBtn.className = "add-confirm-btn";
+  confirmBtn.innerHTML = "&#10003;";
+  confirmBtn.setAttribute("aria-label", "Save");
+  form.appendChild(confirmBtn);
+
+  const cancelBtn = document.createElement("button");
+  cancelBtn.type = "button";
+  cancelBtn.className = "add-plus-btn is-open";
+  cancelBtn.textContent = "\u2715";
+  cancelBtn.setAttribute("aria-label", "Cancel");
+  cancelBtn.onclick = () => { editingCp = null; render(); };
+
+  function commit() {
+    const value = input.value.trim();
+    if (!value) { input.focus(); return; }
+    if (isExtinguisher && !typeSelect.value) { typeSelect.focus(); return; }
+    editCheckpoint(spaceId, typeId, cp.id, value, isExtinguisher ? typeSelect.value : undefined);
+    editingCp = null;
+    render();
+  }
+
+  formWrap.appendChild(form);
+  wrap.appendChild(formWrap);
+  wrap.appendChild(cancelBtn);
+
+  setTimeout(() => { input.focus(); if (input.select) input.select(); }, 0);
+  return wrap;
+}
+
+/* ----------------------------------------------------------------------
+   Drag-to-reorder for edit mode. Native HTML5 drag doesn't work on iOS,
+   so this is a hand-rolled touch (and mouse) handler:
+     - Grabbing the \u22ee\u22ee handle starts a drag immediately.
+     - Pressing and holding anywhere else on the row for ~300ms also
+       starts one \u2014 while a short move before that just scrolls the page
+       as normal, so the list never feels "sticky".
+   The lifted row follows the finger; a dashed placeholder shows where it
+   will land; near the screen edges the page auto-scrolls so long lists
+   are reachable. On release the new order is written back via
+   reorderCheckpoints() and the view re-renders.
+   -------------------------------------------------------------------- */
+let dragState = null;
+
+function attachDragReorder(item, handle, spaceId, typeId, cpId) {
+  // Handle: start dragging right away.
+  handle.addEventListener("touchstart", (e) => {
+    e.preventDefault();
+    beginDrag(item, spaceId, typeId, e.touches[0]);
+  }, { passive: false });
+  handle.addEventListener("mousedown", (e) => {
+    e.preventDefault();
+    beginDrag(item, spaceId, typeId, e);
+  });
+
+  // Row body: press-and-hold to start; a real move cancels into a scroll.
+  item.addEventListener("touchstart", (e) => {
+    if (dragState) return;
+    if (e.target.closest("button, input, select, .drag-handle")) return;
+    const touch = e.touches[0];
+    const startX = touch.clientX, startY = touch.clientY;
+    let timer = setTimeout(() => {
+      timer = null;
+      cleanup();
+      beginDrag(item, spaceId, typeId, { clientX: startX, clientY: startY });
+    }, 300);
+    function onMove(ev) {
+      const t = ev.touches[0];
+      if (Math.abs(t.clientX - startX) > 10 || Math.abs(t.clientY - startY) > 10) {
+        if (timer) { clearTimeout(timer); timer = null; }
+        cleanup();
+      }
+    }
+    function onEnd() { if (timer) { clearTimeout(timer); timer = null; } cleanup(); }
+    function cleanup() {
+      item.removeEventListener("touchmove", onMove);
+      item.removeEventListener("touchend", onEnd);
+      item.removeEventListener("touchcancel", onEnd);
+    }
+    item.addEventListener("touchmove", onMove, { passive: true });
+    item.addEventListener("touchend", onEnd);
+    item.addEventListener("touchcancel", onEnd);
+  }, { passive: true });
+}
+
+function beginDrag(item, spaceId, typeId, pointer) {
+  if (dragState) return;
+  const listEl = item.parentElement;
+  const rect = item.getBoundingClientRect();
+  const grabOffset = pointer.clientY - rect.top;
+
+  const placeholder = document.createElement("div");
+  placeholder.className = "edit-item-placeholder";
+  placeholder.style.height = rect.height + "px";
+  listEl.insertBefore(placeholder, item);
+
+  item.classList.add("dragging");
+  item.style.width = rect.width + "px";
+  item.style.left = rect.left + "px";
+  item.style.top = (pointer.clientY - grabOffset) + "px";
+
+  document.body.classList.add("dragging-active");
+  if (navigator.vibrate) { try { navigator.vibrate(12); } catch (e) {} }
+
+  dragState = { item, placeholder, listEl, spaceId, typeId, grabOffset, pointerY: pointer.clientY };
+
+  document.addEventListener("touchmove", onDragMove, { passive: false });
+  document.addEventListener("touchend", onDragEnd);
+  document.addEventListener("touchcancel", onDragEnd);
+  document.addEventListener("mousemove", onDragMove);
+  document.addEventListener("mouseup", onDragEnd);
+
+  dragState.autoScroll = setInterval(() => {
+    if (!dragState) return;
+    const y = dragState.pointerY;
+    const margin = 72;
+    let dy = 0;
+    if (y < margin) dy = -12;
+    else if (y > window.innerHeight - margin) dy = 12;
+    if (dy) {
+      window.scrollBy(0, dy);
+      dragState.item.style.top = (dragState.pointerY - dragState.grabOffset) + "px";
+      updateDragPlaceholder(dragState.pointerY);
+    }
+  }, 16);
+
+  updateDragPlaceholder(pointer.clientY);
+}
+
+function onDragMove(e) {
+  if (!dragState) return;
+  if (e.cancelable) e.preventDefault(); // hold the page still while dragging
+  const pointer = e.touches ? e.touches[0] : e;
+  dragState.pointerY = pointer.clientY;
+  dragState.item.style.top = (pointer.clientY - dragState.grabOffset) + "px";
+  updateDragPlaceholder(pointer.clientY);
+}
+
+function updateDragPlaceholder(y) {
+  const { listEl, item, placeholder } = dragState;
+  const siblings = Array.from(listEl.querySelectorAll(".edit-item")).filter(el => el !== item);
+  let target = null;
+  for (const sib of siblings) {
+    const r = sib.getBoundingClientRect();
+    if (y < r.top + r.height / 2) { target = sib; break; }
+  }
+  if (target) {
+    listEl.insertBefore(placeholder, target);
+  } else {
+    const addRow = listEl.querySelector(".add-row");
+    if (addRow) listEl.insertBefore(placeholder, addRow);
+    else listEl.appendChild(placeholder);
+  }
+}
+
+function onDragEnd() {
+  if (!dragState) return;
+  const { item, placeholder, listEl, spaceId, typeId } = dragState;
+
+  // Read the final order straight off the DOM, with the placeholder
+  // standing in for the lifted row.
+  const order = [];
+  Array.from(listEl.children).forEach(child => {
+    if (child === placeholder) order.push(item.dataset.cpId);
+    else if (child.classList.contains("edit-item") && child !== item) order.push(child.dataset.cpId);
+  });
+
+  clearInterval(dragState.autoScroll);
+  document.removeEventListener("touchmove", onDragMove);
+  document.removeEventListener("touchend", onDragEnd);
+  document.removeEventListener("touchcancel", onDragEnd);
+  document.removeEventListener("mousemove", onDragMove);
+  document.removeEventListener("mouseup", onDragEnd);
+  document.body.classList.remove("dragging-active");
+
+  dragState = null;
+  reorderCheckpoints(spaceId, typeId, order);
+  render();
 }
 
 let lastExtType = null; // remembers the last-picked extinguisher type as a convenience default when adding several in a row
