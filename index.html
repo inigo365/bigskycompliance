@@ -280,6 +280,14 @@
   .last-checked-tag.never{
     background:#fdf3d9;color:#b8860b;border-color:#eddca0;
   }
+  .due-tag{
+    font-size:10.5px;font-weight:700;
+    padding:4px 10px;border-radius:999px;
+    white-space:nowrap;border:1px solid transparent;
+  }
+  .due-tag.soon{background:#fdf3d9;color:#b8860b;border-color:#eddca0;}
+  .due-tag.due{background:#eddca0;color:#8a6508;border-color:#d9c27a;}
+  .due-tag.urgent{background:var(--fail-soft);color:var(--fail);border-color:var(--fail);}
 
   .section{
     background:var(--card);
@@ -2089,6 +2097,25 @@ function lastCheckedTagHTML(summary) {
   return "<span class=\"last-checked-tag" + (isNever ? " never" : "") + "\">" + text + "</span>";
 }
 
+// Overdue tag for the Maintenance List, based on the oldest last-checked
+// date. Months use the same date arithmetic as the PDF "Next test due".
+function dueTagHTML(summary) {
+  if (!summary || summary.status !== "checked") return "";
+  const d = summary.date;
+  const checked = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const days = Math.round((today - checked) / 86400000);
+  const oneMonth = new Date(checked.getFullYear(), checked.getMonth() + 1, checked.getDate());
+  const twoMonths = new Date(checked.getFullYear(), checked.getMonth() + 2, checked.getDate());
+  let cls, text;
+  if (today >= twoMonths) { cls = "urgent"; text = "Urgent"; }
+  else if (today >= oneMonth) { cls = "due"; text = "Due"; }
+  else if (days >= 21) { cls = "soon"; text = "Due soon"; }
+  else return "";
+  return "<span class=\"due-tag " + cls + "\">" + text + "</span>";
+}
+
 async function logCheckAction(payload) {
   try {
     const res = await fetch(MAINTENANCE_API_URL, {
@@ -2282,12 +2309,14 @@ function renderMaintenanceView() {
 
     const head = document.createElement("div");
     head.className = "maint-space-head";
+    const lastChecked = getLastCheckedSummary(space);
     head.innerHTML =
       "<h3>" + space.name + "</h3>" +
       "<div class=\"space-status-col\">" +
       "<span class=\"maint-count" + (items.length ? "" : " zero") + "\">" +
       (items.length ? items.length + " open" : "Clear") + "</span>" +
-      lastCheckedTagHTML(getLastCheckedSummary(space)) +
+      dueTagHTML(lastChecked) +
+      lastCheckedTagHTML(lastChecked) +
       "</div>";
     head.onclick = () => {
       if (openMaintSpaces.has(space.id)) openMaintSpaces.delete(space.id);
