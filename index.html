@@ -424,6 +424,16 @@
     accent-color:var(--accent);
   }
   .flush-row span{font-size:12.5px;color:#3a3d40;}
+  .actioned-wrap{margin-top:8px;}
+  .actioned-label{
+    font-size:10.5px;text-transform:uppercase;letter-spacing:.04em;
+    color:var(--muted);font-weight:700;margin-bottom:4px;
+  }
+  .actioned{
+    display:block;width:100%;font-size:13px;padding:8px 10px;
+    border:1px solid var(--line);border-radius:8px;resize:vertical;
+    font-family:inherit;min-height:38px;background:#fff;
+  }
 
   .maint-flag-badge{
     display:block;
@@ -571,6 +581,12 @@
   }
   .summary-preview ul,.summary-preview li{color:var(--ink);}
   .summary-primary{background:var(--accent) !important;}
+  .summary-wide-btn{
+    display:block;width:100%;margin-top:10px;
+    background:#fff;color:var(--accent);border:1.5px solid var(--accent);
+    font-size:13.5px;font-weight:700;padding:11px 8px;border-radius:9px;font-family:inherit;
+  }
+  .modal-box #summaryMailHint{text-align:center;margin:6px 0 0;font-size:12px;}
   .modal-box .summary-hint{margin:6px 0 2px;font-size:12.5px;}
   .sat-email-btn{background:var(--accent);border-color:var(--accent);color:#fff;}
   .sat-intro{font-size:12.5px;color:var(--muted);margin:2px 2px 12px;line-height:1.45;}
@@ -884,7 +900,8 @@
       <button class="modal-btn confirm summary-primary" id="summaryCopyBody">Copy email body</button>
     </div>
     <button class="summary-link-btn" id="summaryCopyPlain">Copy as plain text instead</button>
-    <button class="summary-link-btn" id="summaryMailto">Open in my email app (you attach the PDFs yourself)</button>
+    <button class="summary-wide-btn" id="summaryMailto">Copy body and open my email app</button>
+    <p class="summary-hint" id="summaryMailHint"></p>
   </div>
 </div>
 
@@ -915,7 +932,7 @@ const BIGSKY_LOGO_ASPECT = 700 / 142; // width / height of the source PNG
    ====================================================================== */
 /* App version, shown top right in the header so it is obvious which copy is
    running. Bump this every time index.html is changed. */
-const APP_VERSION = "v2.3";
+const APP_VERSION = "v2.4";
 const APP_VERSION_DATE = "29 Oct 2026";
 
 /* This file is the MAIN app. The satellite pages (satellite/*.html) are generated
@@ -1027,12 +1044,14 @@ const BUILDINGS = [
 /* Satellite sites run their own checklist pages (satellite/*.html) but report into
    this same Maintenance sheet, so they show up on the Maintenance List and in the
    monthly email. "types" lists the compliance types that site has checkpoints for
-   (null = not set up yet). Update it when a satellite page gains or loses a type.
+   (null = not listed yet, so it counts whichever types the site has logged checks
+   for). Set it once a site's list of types is final, so a type that is never
+   checked shows as outstanding.
    The name must match the space name used on that site's own page. */
 const SATELLITE_SITES = [
   { name: "Omega Place", page: "satellite/omega.html", types: ["emergencyLighting", "fireExtinguishers"] },
-  { name: "14A", page: null, types: null },
-  { name: "Hoxton", page: null, types: null },
+  { name: "14A", page: "satellite/14a.html", types: null },
+  { name: "Hoxton", page: "satellite/hoxton.html", types: null },
 ];
 // END SITE DATA
 
@@ -1205,8 +1224,8 @@ function addCheckpoint(spaceId, typeId, name, extType) {
   if (!state.items[spaceId]) state.items[spaceId] = {};
   if (!state.items[spaceId][typeId]) state.items[spaceId][typeId] = {};
   state.items[spaceId][typeId][cp.id] = type.kind === "passfail"
-    ? { status: "pass", notes: "" }
-    : { hot: "", cold: "", notes: "", flush: true };
+    ? { status: "pass", notes: "", actioned: "" }
+    : { hot: "", cold: "", notes: "", actioned: "", flush: true };
   saveState();
 }
 
@@ -1302,9 +1321,9 @@ function defaultState() {
       state.items[spaceId][t.id] = {};
       CHECKPOINTS[spaceId][t.id].forEach(cp => {
         if (t.kind === "passfail") {
-          state.items[spaceId][t.id][cp.id] = { status: "pass", notes: "" };
+          state.items[spaceId][t.id][cp.id] = { status: "pass", notes: "", actioned: "" };
         } else {
-          state.items[spaceId][t.id][cp.id] = { hot: "", cold: "", notes: "", flush: true };
+          state.items[spaceId][t.id][cp.id] = { hot: "", cold: "", notes: "", actioned: "", flush: true };
         }
       });
     });
@@ -1318,9 +1337,9 @@ function defaultItemsForSpace(spaceId) {
     items[t.id] = {};
     CHECKPOINTS[spaceId][t.id].forEach(cp => {
       if (t.kind === "passfail") {
-        items[t.id][cp.id] = { status: "pass", notes: "" };
+        items[t.id][cp.id] = { status: "pass", notes: "", actioned: "" };
       } else {
-        items[t.id][cp.id] = { hot: "", cold: "", notes: "", flush: true };
+        items[t.id][cp.id] = { hot: "", cold: "", notes: "", actioned: "", flush: true };
       }
     });
   });
@@ -1547,6 +1566,7 @@ function renderMain() {
           const d = state.items[space.id][t.id][cp.id];
           d.status = "pass";
           d.notes = "";
+          d.actioned = "";
           if (pushedMaintenance[cp.id]) delete pushedMaintenance[cp.id];
         });
         savePushed();
@@ -1988,6 +2008,24 @@ function renderAddRow(spaceId, typeId) {
   return wrap;
 }
 
+// "Action taken" box shown under a failed item, so the PDF can record what
+// has actually been done about it (reported, fixed, tag replaced, etc.).
+function buildActionedBox_(data) {
+  const wrap = document.createElement("div");
+  wrap.className = "actioned-wrap";
+  const label = document.createElement("div");
+  label.className = "actioned-label";
+  label.textContent = "Action taken";
+  wrap.appendChild(label);
+  const box = document.createElement("textarea");
+  box.className = "actioned";
+  box.placeholder = "What's been done about it? e.g. reported to facilities, tag replaced";
+  box.value = data.actioned || "";
+  box.oninput = (e) => { data.actioned = e.target.value; scheduleSave(); };
+  wrap.appendChild(box);
+  return wrap;
+}
+
 function buildMaintBadge(cp) {
   const entry = openMaintenanceForCheckpoint(cp.id);
   if (!entry) return null;
@@ -2023,6 +2061,7 @@ function renderPassFailItem(spaceId, typeId, cp) {
   passBtn.onclick = () => {
     data.status = "pass";
     data.notes = ""; // a Pass carries no failure note, so old text can't print on the PDF
+    data.actioned = "";
     saveState();
     if (pushedMaintenance[cp.id]) { delete pushedMaintenance[cp.id]; savePushed(); }
     render();
@@ -2030,7 +2069,7 @@ function renderPassFailItem(spaceId, typeId, cp) {
   failBtn.onclick = () => {
     // Notes only belong to a Fail, so anything left over from while the item
     // was on Pass is stale: start the box clean before prefilling.
-    if (data.status !== "fail") data.notes = "";
+    if (data.status !== "fail") { data.notes = ""; data.actioned = ""; }
     data.status = "fail";
     // If this checkpoint already has an open entry on the shared Maintenance
     // List, tapping Fail means it still has not been fixed, so carry the
@@ -2061,6 +2100,7 @@ function renderPassFailItem(spaceId, typeId, cp) {
     notes.value = data.notes || "";
     notes.oninput = (e) => { data.notes = e.target.value; scheduleSave(); };
     item.appendChild(notes);
+    item.appendChild(buildActionedBox_(data));
   }
 
   return item;
@@ -2120,6 +2160,11 @@ function renderWaterItem(spaceId, typeId, cp) {
   flushRow.appendChild(flushLabel);
   item.appendChild(flushRow);
 
+  // Water items have no Fail button: a note is what flags one, so the Action
+  // taken box appears as soon as there is a note.
+  const actionedWrap = buildActionedBox_(data);
+  actionedWrap.style.display = (data.notes && data.notes.trim()) ? "" : "none";
+
   const notes = document.createElement("textarea");
   notes.className = "temp-notes";
   notes.placeholder = "Notes (optional)";
@@ -2127,12 +2172,18 @@ function renderWaterItem(spaceId, typeId, cp) {
   notes.oninput = (e) => {
     data.notes = e.target.value;
     scheduleSave();
+    actionedWrap.style.display = data.notes.trim() ? "" : "none";
+    if (!data.notes.trim() && data.actioned) {
+      data.actioned = "";
+      actionedWrap.querySelector("textarea").value = "";
+    }
     if (!data.notes.trim() && pushedMaintenance[cp.id]) {
       delete pushedMaintenance[cp.id];
       savePushed();
     }
   };
   item.appendChild(notes);
+  item.appendChild(actionedWrap);
 
   return item;
 }
@@ -2514,7 +2565,12 @@ function allMaintenanceSpaces_() {
 // Compliance types that count for a space: those with checkpoints, or for a
 // satellite site the types listed in SATELLITE_SITES.
 function applicableTypes_(space) {
-  if (space.satellite) return COMPLIANCE_TYPES.filter(t => (space.types || []).indexOf(t.id) >= 0);
+  if (space.satellite) {
+    if (Array.isArray(space.types)) return COMPLIANCE_TYPES.filter(t => space.types.indexOf(t.id) >= 0);
+    // Not listed yet: count the types this site has actually started logging checks for.
+    const logged = new Set((checkLogItems || []).filter(it => it.Space === space.name).map(it => it["Compliance Type"]));
+    return COMPLIANCE_TYPES.filter(t => logged.has(t.id));
+  }
   return COMPLIANCE_TYPES.filter(t => CHECKPOINTS[space.id][t.id].length > 0);
 }
 
@@ -2829,8 +2885,15 @@ function groupRows_(rows) {
     });
 }
 
-function rowText_(r, kind) {
-  let t = r.name + (r.ext ? " (" + r.ext + ")" : "") + ": " + r.issue;
+// Extinguisher rows already carry their type in the checkpoint name when they
+// were logged ("Main Area (Foam)"), so only add it when it isn't there.
+function rowLabel_(r) {
+  const has = r.ext && r.name.toLowerCase().endsWith("(" + r.ext.toLowerCase() + ")");
+  return r.name + (r.ext && !has ? " (" + r.ext + ")" : "");
+}
+
+function rowRest_(r, kind) {
+  let t = ": " + r.issue;
   const bits = [];
   if (kind === "added") {
     if (r.flagged) bits.push("flagged " + dayLabel_(r.flagged));
@@ -2846,15 +2909,20 @@ function rowText_(r, kind) {
   return t;
 }
 
+function rowText_(r, kind) {
+  return rowLabel_(r) + rowRest_(r, kind);
+}
+
 function sectionHtml_(title, rows, kind) {
-  let h = '<p style="margin:18px 0 4px;font-size:15px;"><b>' + escapeHtml_(title) + " (" + rows.length + ")</b></p>";
+  let h = '<hr style="border:0;border-top:1px solid #cfcfcf;margin:20px 0 0;">' +
+    '<p style="margin:12px 0 4px;font-size:16px;"><b>' + escapeHtml_(title.toUpperCase()) + " (" + rows.length + ")</b></p>";
   if (!rows.length) return h + '<p style="margin:2px 0;">None.</p>';
   groupRows_(rows).forEach(g => {
     h += '<p style="margin:10px 0 2px;"><b>' + escapeHtml_(g.space + (g.satellite ? " (satellite site)" : "")) + "</b></p>";
     g.types.forEach(ty => {
       h += '<p style="margin:2px 0;"><i>' + escapeHtml_(ty.label) + "</i></p>";
       h += '<ul style="margin:2px 0 6px 20px;padding:0;">';
-      ty.rows.forEach(r => { h += "<li>" + escapeHtml_(rowText_(r, kind)) + "</li>"; });
+      ty.rows.forEach(r => { h += "<li><b>" + escapeHtml_(rowLabel_(r)) + "</b>" + escapeHtml_(rowRest_(r, kind)) + "</li>"; });
       h += "</ul>";
     });
   });
@@ -2952,8 +3020,6 @@ function buildMonthlySummary(year, month, now) {
   }
 
   const summaryLine = plural_(sets.added.length, "new issue") + ", " + sets.stillOpen.length + " still open from earlier months, " + sets.resolved.length + " resolved.";
-  const name = (ui.checkedBy || "").trim();
-  if (!name) notes.push("No name entered, so the email isn't signed. Add yours in the Your name box on the Checklist tab.");
   const sections = [
     ["New issues flagged in " + mName, sets.added, "added"],
     ["Still open from earlier months", sets.stillOpen, "open"],
@@ -2963,14 +3029,13 @@ function buildMonthlySummary(year, month, now) {
   let html = '<div style="font-family:Arial,Helvetica,sans-serif;font-size:14px;line-height:1.5;color:#1c2024;">' +
     '<p style="margin:0 0 10px;">Hi all,</p>' +
     '<p style="margin:0 0 10px;">' + escapeHtml_(intro) + "</p>" +
-    '<p style="margin:0 0 4px;">' + escapeHtml_(summaryLine) + "</p>";
+    '<p style="margin:0 0 4px;"><b>' + escapeHtml_(summaryLine) + "</b></p>";
   let text = "Hi all,\n\n" + intro + "\n\n" + summaryLine + "\n";
   sections.forEach(s => {
     html += sectionHtml_(s[0], s[1], s[2]);
     text += sectionText_(s[0], s[1], s[2]);
   });
-  html += '<p style="margin:18px 0 0;">Kind regards' + (name ? "<br>" + escapeHtml_(name) : "") + "</p></div>";
-  text += "\nKind regards" + (name ? "\n" + name : "") + "\n";
+  html += "</div>";
 
   return {
     subject: "Monthly Compliance Summary, " + (singleSite ? singleSite.name + ", " : "") + title,
@@ -3025,6 +3090,7 @@ async function openSummaryModal(trigger) {
   sel.onchange = renderSummaryPreview_;
   document.getElementById("summaryTo").textContent = FACILITIES_EMAIL;
   document.getElementById("summaryHint").style.display = IS_SATELLITE ? "" : "none";
+  document.getElementById("summaryMailHint").textContent = "Opens a new email with the address and subject filled in and copies the body. Paste it in (Ctrl+V or Cmd+V, or tap and paste on a phone)" + (IS_SATELLITE ? ", then attach your PDFs." : ".");
   renderSummaryPreview_();
   document.getElementById("summaryOverlay").classList.add("show");
 }
@@ -3089,11 +3155,19 @@ document.getElementById("summaryCopyTo").onclick = async (e) => {
 // Opens the phone's or computer's email app with To, subject and body filled
 // in. Plain text only, and it can't attach the PDFs (web pages can't do that).
 function mailtoUrl_(summary) {
-  return "mailto:" + FACILITIES_EMAIL + "?subject=" + encodeURIComponent(summary.subject) +
-    "&body=" + encodeURIComponent(summary.text.replace(/\n/g, "\r\n"));
+  return "mailto:" + FACILITIES_EMAIL + "?subject=" + encodeURIComponent(summary.subject);
 }
-document.getElementById("summaryMailto").onclick = () => {
-  if (currentSummary) window.location.href = mailtoUrl_(currentSummary);
+function openMailCompose_(url) { window.location.href = url; }
+// Opens a new email with the address and subject filled in, and copies the
+// formatted body to paste in. The body is deliberately not put in the link:
+// that would be plain text with no bold headings, and Gmail leaves out your
+// signature when a link supplies the body.
+document.getElementById("summaryMailto").onclick = async (e) => {
+  const btn = e.currentTarget;
+  if (!currentSummary) return;
+  const ok = await copyRich_(currentSummary.html, currentSummary.text);
+  flashButton_(btn, ok ? "Body copied: paste it into the email" : "Couldn't copy, use Copy email body");
+  openMailCompose_(mailtoUrl_(currentSummary));
 };
 document.getElementById("summaryClose").onclick = () => {
   document.getElementById("summaryOverlay").classList.remove("show");
@@ -3124,6 +3198,11 @@ document.getElementById("summaryCopyPlain").onclick = async (e) => {
    PDF GENERATION — one button generates all four PDFs, scoped to the
    currently selected space only.
    ====================================================================== */
+// What was done about a failed item. Blank for anything that passed.
+function pdfActionedFor_(type, data) {
+  return isLocallyFlagged_(type, data) ? String(data.actioned || "") : "";
+}
+
 function pdfNoteForPassFail_(data) {
   return data.status === "fail" ? (data.notes || "") : "";
 }
@@ -3258,27 +3337,34 @@ async function generateSpacePDFs() {
         const result = data.status === "pass" ? "Pass" : "FAIL";
         if (isExtinguisher) {
           const ext = extinguisherType(cp.extType);
-          return [ext ? ext.label : "—", cp.name, result, pdfNoteForPassFail_(data)];
+          return [ext ? ext.label : "—", cp.name, result, pdfNoteForPassFail_(data), pdfActionedFor_(type, data)];
         }
-        return [cp.name, result, pdfNoteForPassFail_(data)];
+        return [cp.name, result, pdfNoteForPassFail_(data), pdfActionedFor_(type, data)];
       }
-      return [cp.name, data.hot ? data.hot + " C" : "—", data.cold ? data.cold + " C" : "—", data.flush !== false ? "Yes" : "No", data.notes || ""];
+      return [cp.name, data.hot ? data.hot + " C" : "—", data.cold ? data.cold + " C" : "—", data.flush !== false ? "Yes" : "No", data.notes || "", pdfActionedFor_(type, data)];
     });
 
     const head = isExtinguisher
-      ? [["Type", "Checkpoint", "Result", "Notes"]]
+      ? [["Type", "Checkpoint", "Result", "Notes", "Actioned"]]
       : type.kind === "passfail"
-        ? [["Checkpoint", "Result", "Notes"]]
-        : [["Checkpoint", "Hot", "Cold", "Flushed", "Notes"]];
+        ? [["Checkpoint", "Result", "Notes", "Actioned"]]
+        : [["Checkpoint", "Hot", "Cold", "Flushed", "Notes", "Actioned"]];
     const failColIndex = isExtinguisher ? 2 : 1;
+    // Narrow fixed columns, so Notes and Actioned share the rest and wrap.
+    const columnStyles = isExtinguisher
+      ? { 0: { cellWidth: 52 }, 1: { cellWidth: 105 }, 2: { cellWidth: 46 } }
+      : type.kind === "passfail"
+        ? { 0: { cellWidth: 130 }, 1: { cellWidth: 46 } }
+        : { 0: { cellWidth: 95 }, 1: { cellWidth: 40 }, 2: { cellWidth: 40 }, 3: { cellWidth: 46 } };
 
     doc.autoTable({
       startY: 88,
       head: head,
       body: rows,
       margin: { left: marginX, right: marginX },
-      styles: { fontSize: 10, cellPadding: 6, font: "helvetica" },
+      styles: { fontSize: 9.5, cellPadding: 5, font: "helvetica" },
       headStyles: { fillColor: [20, 22, 24] },
+      columnStyles: columnStyles,
       didParseCell: function (data) {
         if (type.kind === "passfail" && data.column.index === failColIndex && data.cell.raw === "FAIL") {
           data.cell.styles.textColor = [196, 69, 58];
