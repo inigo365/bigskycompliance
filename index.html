@@ -77,6 +77,7 @@
     display:flex;flex-direction:column;align-items:flex-end;gap:2px;flex:0 0 auto;
   }
   .app-version{font-size:10px;color:#7f8d89;letter-spacing:.02em;}
+  .temp-link{color:#d9b36a;}
 
   .picker-row{
     display:flex;gap:8px;margin-top:12px;
@@ -674,6 +675,12 @@
     border-color:var(--accent);
   }
 
+  .maint-group-heading{
+    font-size:10.5px;text-transform:uppercase;letter-spacing:.07em;
+    color:var(--muted);font-weight:700;
+    margin:22px 2px 8px;
+  }
+  .maint-space.satellite{border-left:3px solid var(--accent);}
   .maint-space{
     background:var(--card);
     border:1px solid var(--line);
@@ -759,6 +766,7 @@
     <div class="brand-right">
       <span class="app-version" id="appVersion"></span>
       <a class="help-link" href="./instructions.html">How to use</a>
+      <a class="help-link temp-link" href="./satellite/omega.html">Omega Place (test)</a><!--TEMP-SAT-LINK-->
     </div>
   </div>
   <div class="savebar" id="saveBar">All changes saved on this device</div>
@@ -882,13 +890,22 @@ const BIGSKY_LOGO_ASPECT = 700 / 142; // width / height of the source PNG
    ====================================================================== */
 /* App version, shown top right in the header so it is obvious which copy is
    running. Bump this every time index.html is changed. */
-const APP_VERSION = "v2.1";
+const APP_VERSION = "v2.2";
 const APP_VERSION_DATE = "29 Oct 2026";
+
+/* This file is the MAIN app. The satellite pages (satellite/*.html) are generated
+   copies of it with IS_SATELLITE = true and their own site data. */
+const IS_SATELLITE = false;
+const APP_FILE = "index.html";
 
 const MAINTENANCE_API_URL = "https://script.google.com/macros/s/AKfycbznKry2pHDDGfTZItJbeleeCnLRj3ygV9geT46RBFFyLmWFUfu3CsVv8lUelXYF4oFJ/exec";
 const MAINTENANCE_SHEET_URL = "https://docs.google.com/spreadsheets/d/1zxLffQ_Fb_-oK7ndJMgNyKR-d7IOMIQ8veTSad6NzwA/edit?usp=sharing";
 
 document.getElementById("maintSheetLink").href = MAINTENANCE_SHEET_URL;
+if (IS_SATELLITE) {
+  document.getElementById("summaryBtn").style.display = "none";
+  document.getElementById("maintSheetLink").style.display = "none";
+}
 (function showVersion() {
   const el = document.getElementById("appVersion");
   el.textContent = APP_VERSION;
@@ -976,6 +993,18 @@ const BUILDINGS = [
     ]
   },
 ];
+
+/* Satellite sites run their own checklist pages (satellite/*.html) but report into
+   this same Maintenance sheet, so they show up on the Maintenance List and in the
+   monthly email. "types" lists the compliance types that site has checkpoints for
+   (null = not set up yet). Update it when a satellite page gains or loses a type.
+   The name must match the space name used on that site's own page. */
+const SATELLITE_SITES = [
+  { name: "Omega Place", types: ["emergencyLighting", "fireExtinguishers"] },
+  { name: "14A", types: null },
+  { name: "Hoxton", types: null },
+];
+// END SITE DATA
 
 const CHECKPOINTS_KEY = "bigsky_compliance_checkpoints_v1";
 
@@ -1376,6 +1405,8 @@ function renderPickers() {
   const building = BUILDINGS.find(b => b.id === ui.buildingId);
   const sPickerWrap = document.getElementById("spacePickerWrap");
   const sSelect = document.getElementById("spaceSelect");
+  bSelect.parentElement.style.display = BUILDINGS.length <= 1 ? "none" : "";
+  document.querySelector(".picker-row").style.display = (BUILDINGS.length <= 1 && building.spaces.length <= 1) ? "none" : "";
 
   if (building.spaces.length <= 1) {
     ui.spaceId = building.spaces[0].id;
@@ -2193,7 +2224,7 @@ function openMaintenanceForCheckpoint(checkpointId) {
 // month just because 3 of its 4 sections have been.
 function getLastCheckedSummary(space) {
   if (!checkLogItems) return null; // not loaded yet — render nothing rather than a wrong guess
-  const applicableTypes = COMPLIANCE_TYPES.filter(t => CHECKPOINTS[space.id][t.id].length > 0);
+  const applicableTypes = applicableTypes_(space);
   if (!applicableTypes.length) return { status: "none" }; // nothing set up yet for this space at all
 
   let oldest = null;
@@ -2397,6 +2428,19 @@ async function syncFlaggedItemsForSpace(space, types) {
 /* ---- rendering the accordion, one section per space (14 total) ---- */
 let openMaintSpaces = new Set();
 
+// Main spaces first, then satellite sites (flagged so they can be shown apart).
+function allMaintenanceSpaces_() {
+  const sats = SATELLITE_SITES.map(s => ({ id: "sat:" + s.name, name: s.name, satellite: true, types: s.types, group: "Satellite sites" }));
+  return allSpacesFlat().concat(sats);
+}
+
+// Compliance types that count for a space: those with checkpoints, or for a
+// satellite site the types listed in SATELLITE_SITES.
+function applicableTypes_(space) {
+  if (space.satellite) return COMPLIANCE_TYPES.filter(t => (space.types || []).indexOf(t.id) >= 0);
+  return COMPLIANCE_TYPES.filter(t => CHECKPOINTS[space.id][t.id].length > 0);
+}
+
 function allSpacesFlat() {
   const list = [];
   BUILDINGS.forEach(b => b.spaces.forEach(s => list.push({ id: s.id, name: s.name })));
@@ -2425,14 +2469,31 @@ function renderMaintenanceView() {
 
   const openItems = maintenanceItems.filter(it => it.Status === "Open");
 
-  allSpacesFlat().forEach(space => {
-    const items = openItems.filter(it => it.Space === space.name);
+  const spaces = allMaintenanceSpaces_();
+  // Open issues whose space name matches nothing above (e.g. a renamed space)
+  // would otherwise vanish from this tab, so they get their own group.
+  const known = new Set(spaces.map(s => s.name));
+  const unmatched = openItems.filter(it => !known.has(it.Space));
+  if (!IS_SATELLITE && unmatched.length) {
+    spaces.push({ id: "other", name: "Space name not recognised", other: true, group: "Other" });
+  }
+
+  let lastGroup = "";
+  spaces.forEach(space => {
+    if (space.group && space.group !== lastGroup) {
+      const gh = document.createElement("div");
+      gh.className = "maint-group-heading";
+      gh.textContent = space.group;
+      main.appendChild(gh);
+    }
+    lastGroup = space.group || "";
+    const items = space.other ? unmatched : openItems.filter(it => it.Space === space.name);
     const wrap = document.createElement("div");
-    wrap.className = "maint-space" + (openMaintSpaces.has(space.id) ? " open" : "");
+    wrap.className = "maint-space" + (space.satellite ? " satellite" : "") + (openMaintSpaces.has(space.id) ? " open" : "");
 
     const head = document.createElement("div");
     head.className = "maint-space-head";
-    const lastChecked = getLastCheckedSummary(space);
+    const lastChecked = space.other ? null : getLastCheckedSummary(space);
     head.innerHTML =
       "<h3>" + space.name + "</h3>" +
       "<div class=\"space-status-col\">" +
@@ -2610,8 +2671,8 @@ function summaryCoverage_(year, month) {
   const { start, end } = monthBounds_(year, month);
   const out = { done: [], incomplete: [], unknown: [], first: null, last: null };
   const log = checkLogItems || [];
-  allSpacesFlat().forEach(space => {
-    const applicable = COMPLIANCE_TYPES.filter(t => CHECKPOINTS[space.id][t.id].length > 0);
+  allMaintenanceSpaces_().forEach(space => {
+    const applicable = applicableTypes_(space);
     if (!applicable.length) return;
     let incomplete = false, later = false, oldest = null, newest = null;
     applicable.forEach(t => {
@@ -2665,7 +2726,7 @@ function summaryIssueSets_(year, month) {
 
 // Groups rows by space (in the app's usual order), then by compliance type.
 function groupRows_(rows) {
-  const spaceOrder = allSpacesFlat().map(s => s.name);
+  const spaceOrder = allMaintenanceSpaces_().map(s => s.name);
   const typeOrder = COMPLIANCE_TYPES.map(t => t.id);
   const bySpace = new Map();
   rows.slice().sort((a, b) => (a.flagged || 0) - (b.flagged || 0)).forEach(r => {
@@ -2675,6 +2736,7 @@ function groupRows_(rows) {
     byType.get(r.typeId).push(r);
   });
   const rank = (arr, v) => { const i = arr.indexOf(v); return i < 0 ? 999 : i; };
+  const isSat = sp => SATELLITE_SITES.some(s => s.name === sp);
   return [...bySpace.keys()]
     .sort((a, b) => (rank(spaceOrder, a) - rank(spaceOrder, b)) || a.localeCompare(b))
     .map(sp => {
@@ -2685,7 +2747,7 @@ function groupRows_(rows) {
           const meta = COMPLIANCE_TYPES.find(t => t.id === tid);
           return { label: meta ? meta.label : tid, rows: byType.get(tid) };
         });
-      return { space: sp, types: types };
+      return { space: sp, satellite: isSat(sp), types: types };
     });
 }
 
@@ -2710,7 +2772,7 @@ function sectionHtml_(title, rows, kind) {
   let h = '<p style="margin:18px 0 4px;font-size:15px;"><b>' + escapeHtml_(title) + " (" + rows.length + ")</b></p>";
   if (!rows.length) return h + '<p style="margin:2px 0;">None.</p>';
   groupRows_(rows).forEach(g => {
-    h += '<p style="margin:10px 0 2px;"><b>' + escapeHtml_(g.space) + "</b></p>";
+    h += '<p style="margin:10px 0 2px;"><b>' + escapeHtml_(g.space + (g.satellite ? " (satellite site)" : "")) + "</b></p>";
     g.types.forEach(ty => {
       h += '<p style="margin:2px 0;"><i>' + escapeHtml_(ty.label) + "</i></p>";
       h += '<ul style="margin:2px 0 6px 20px;padding:0;">';
@@ -2725,7 +2787,7 @@ function sectionText_(title, rows, kind) {
   let t = "\n" + title.toUpperCase() + " (" + rows.length + ")\n";
   if (!rows.length) return t + "None.\n";
   groupRows_(rows).forEach(g => {
-    t += "\n" + g.space + "\n";
+    t += "\n" + g.space + (g.satellite ? " (satellite site)" : "") + "\n";
     g.types.forEach(ty => {
       t += ty.label + "\n";
       ty.rows.forEach(r => { t += "- " + rowText_(r, kind) + "\n"; });
@@ -2939,7 +3001,13 @@ function showPdfSelectModal(spaceName) {
     const checksWrap = document.getElementById("pdfTypeChecks");
     checksWrap.innerHTML = "";
     const checkboxes = [];
-    COMPLIANCE_TYPES.forEach(t => {
+    const offered = COMPLIANCE_TYPES.filter(t => ((CHECKPOINTS[ui.spaceId] || {})[t.id] || []).length > 0);
+    if (!offered.length) {
+      showToast("No checkpoints set up for this space yet");
+      resolve(null);
+      return;
+    }
+    offered.forEach(t => {
       const row = document.createElement("label");
       row.className = "pdf-type-check-row";
       const cb = document.createElement("input");
@@ -3230,11 +3298,11 @@ function openExportModal(scope) {
     const found = findSpace(ui.spaceId);
     if (!found) return;
     title.textContent = "Export \u201c" + found.space.name + "\u201d";
-    help.innerHTML = "Copy this, then paste it in over the existing <code>" + found.space.id + "</code> entry inside the <code>CHECKPOINTS_DEFAULT</code> block in index.html (replacing just that one space's block), and commit to GitHub.";
+    help.innerHTML = "Copy this, then paste it in over the existing <code>" + found.space.id + "</code> entry inside the <code>CHECKPOINTS_DEFAULT</code> block in " + APP_FILE + " (replacing just that one space's block), and commit to GitHub.";
     document.getElementById("exportTextarea").value = generateExportCodeForSpace(found.space.id);
   } else {
     title.textContent = "Export checkpoint list";
-    help.innerHTML = "Copy this, then paste it over the entire <code>CHECKPOINTS_DEFAULT</code> block near the top of index.html and commit to GitHub. That's what makes it permanent and identical on every device — right now it only exists on this one.";
+    help.innerHTML = "Copy this, then paste it over the entire <code>CHECKPOINTS_DEFAULT</code> block near the top of " + APP_FILE + " and commit to GitHub. That's what makes it permanent and identical on every device — right now it only exists on this one.";
     document.getElementById("exportTextarea").value = generateExportCode();
   }
   overlay.classList.add("show");
