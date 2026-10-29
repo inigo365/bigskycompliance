@@ -78,7 +78,6 @@
     display:flex;flex-direction:column;align-items:flex-end;gap:2px;flex:0 0 auto;
   }
   .app-version{font-size:10px;color:#7f8d89;letter-spacing:.02em;}
-  .temp-link{color:#d9b36a;}
 
   .picker-row{
     display:flex;gap:8px;margin-top:12px;
@@ -573,6 +572,22 @@
   }
   .summary-preview ul,.summary-preview li{color:var(--ink);}
   .summary-primary{background:var(--accent) !important;}
+  .modal-box .summary-hint{margin:6px 0 2px;font-size:12.5px;}
+  .sat-email-btn{background:var(--accent);border-color:var(--accent);color:#fff;}
+  .sat-intro{font-size:12.5px;color:var(--muted);margin:2px 2px 12px;line-height:1.45;}
+  .sat-card{
+    background:var(--card);border:1px solid var(--line);border-left:3px solid var(--accent);
+    border-radius:var(--radius);padding:14px;margin-bottom:10px;
+  }
+  .sat-card-name{font-size:14px;font-weight:700;margin-bottom:10px;}
+  .sat-card-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap;}
+  .sat-btn{
+    font-size:12px;font-weight:700;padding:9px 14px;border-radius:8px;
+    border:1px solid var(--line);background:var(--paper);color:var(--ink);
+    text-decoration:none;font-family:inherit;
+  }
+  .sat-btn.primary{background:var(--accent);border-color:var(--accent);color:#fff;}
+  .sat-soon{font-size:12px;color:var(--muted);font-style:italic;}
   .summary-link-btn{
     display:block;margin:10px auto 0;background:none;border:none;
     color:var(--muted);font-size:12px;text-decoration:underline;
@@ -646,8 +661,8 @@
     background:rgba(255,255,255,0.06);
     border:1px solid rgba(255,255,255,0.14);
     color:#cfd6d3;
-    font-size:12.5px;font-weight:700;
-    padding:9px 6px;border-radius:9px;
+    font-size:12px;font-weight:700;white-space:nowrap;
+    padding:9px 4px;border-radius:9px;
     font-family:inherit;
   }
   .view-tab.active{
@@ -766,8 +781,6 @@
     </div>
     <div class="brand-right">
       <span class="app-version" id="appVersion"></span>
-      <a class="help-link" href="../instructions.html">How to use</a>
-      <a class="help-link temp-link" href="../index.html">Back to main app</a><!--TEMP-SAT-LINK-->
     </div>
   </div>
   <div class="savebar" id="saveBar">All changes saved on this device</div>
@@ -775,6 +788,7 @@
   <div class="view-tabs">
     <button class="view-tab active" id="viewTabChecklist">Checklist</button>
     <button class="view-tab" id="viewTabMaintenance">Maintenance List</button>
+    <button class="view-tab" id="viewTabSatellites">Satellites</button>
   </div>
 
   <div id="checklistHeaderControls">
@@ -789,6 +803,7 @@
         <select id="spaceSelect"></select>
       </div>
     </div>
+    <button class="edit-toggle sat-email-btn" id="satEmailBtn" style="display:none;">Monthly email to facilities</button>
     <button class="edit-toggle" id="editModeToggle">Edit checkpoints</button>
     <div class="export-btn-row" id="exportBtnRow" style="display:none;">
       <button class="export-btn" id="exportAllBtn">Export All</button>
@@ -843,11 +858,19 @@
 <div class="modal-overlay" id="summaryOverlay">
   <div class="modal-box summary-box">
     <h3>Monthly summary email</h3>
+    <p class="summary-hint" id="summaryHint" style="display:none;">Generate your PDFs first, then attach them to the email before you send it.</p>
     <div class="summary-controls">
       <label for="summaryMonth">Month</label>
       <select id="summaryMonth" class="summary-select"></select>
     </div>
     <div id="summaryNotes"></div>
+    <div class="summary-subject-row">
+      <div class="summary-subject-text">
+        <div class="summary-subject-label">To</div>
+        <div class="summary-subject" id="summaryTo"></div>
+      </div>
+      <button class="summary-small-btn" id="summaryCopyTo">Copy address</button>
+    </div>
     <div class="summary-subject-row">
       <div class="summary-subject-text">
         <div class="summary-subject-label">Subject</div>
@@ -861,6 +884,7 @@
       <button class="modal-btn confirm summary-primary" id="summaryCopyBody">Copy email body</button>
     </div>
     <button class="summary-link-btn" id="summaryCopyPlain">Copy as plain text instead</button>
+    <button class="summary-link-btn" id="summaryMailto">Open in my email app (you attach the PDFs yourself)</button>
   </div>
 </div>
 
@@ -891,13 +915,16 @@ const BIGSKY_LOGO_ASPECT = 700 / 142; // width / height of the source PNG
    ====================================================================== */
 /* App version, shown top right in the header so it is obvious which copy is
    running. Bump this every time index.html is changed. */
-const APP_VERSION = "v2.2";
+const APP_VERSION = "v2.3";
 const APP_VERSION_DATE = "29 Oct 2026";
 
 /* This file is the MAIN app. The satellite pages (satellite/*.html) are generated
    copies of it with IS_SATELLITE = true and their own site data. */
 const IS_SATELLITE = true;
 const APP_FILE = "satellite/omega.html";
+
+// Where the monthly summary email is addressed.
+const FACILITIES_EMAIL = "facilities@bigskylondon.com";
 
 const MAINTENANCE_API_URL = "https://script.google.com/macros/s/AKfycbznKry2pHDDGfTZItJbeleeCnLRj3ygV9geT46RBFFyLmWFUfu3CsVv8lUelXYF4oFJ/exec";
 const MAINTENANCE_SHEET_URL = "https://docs.google.com/spreadsheets/d/1zxLffQ_Fb_-oK7ndJMgNyKR-d7IOMIQ8veTSad6NzwA/edit?usp=sharing";
@@ -906,6 +933,8 @@ document.getElementById("maintSheetLink").href = MAINTENANCE_SHEET_URL;
 if (IS_SATELLITE) {
   document.getElementById("summaryBtn").style.display = "none";
   document.getElementById("maintSheetLink").style.display = "none";
+  document.getElementById("viewTabSatellites").style.display = "none";
+  document.getElementById("satEmailBtn").style.display = "";
 }
 (function showVersion() {
   const el = document.getElementById("appVersion");
@@ -1986,8 +2015,10 @@ function render() {
     editBtn.textContent = editMode ? "Done editing checkpoints" : "Edit checkpoints";
     editBtn.classList.toggle("active", editMode);
     document.getElementById("exportBtnRow").style.display = editMode ? "" : "none";
-  } else {
+  } else if (currentView === "maintenance") {
     renderMaintenanceView();
+  } else {
+    renderSatellitePages();
   }
 }
 
@@ -2000,22 +2031,67 @@ let currentView = "checklist";
 function setView(view) {
   currentView = view;
   const isChecklist = view === "checklist";
+  const isMaint = view === "maintenance";
   document.getElementById("viewTabChecklist").classList.toggle("active", isChecklist);
-  document.getElementById("viewTabMaintenance").classList.toggle("active", !isChecklist);
+  document.getElementById("viewTabMaintenance").classList.toggle("active", isMaint);
+  document.getElementById("viewTabSatellites").classList.toggle("active", view === "satellites");
   document.getElementById("checklistHeaderControls").style.display = isChecklist ? "" : "none";
-  document.getElementById("maintenanceHeaderControls").style.display = isChecklist ? "none" : "";
+  document.getElementById("maintenanceHeaderControls").style.display = isMaint ? "" : "none";
   document.getElementById("resetRow").style.display = isChecklist ? "" : "none";
   document.getElementById("footer").style.display = isChecklist ? "" : "none";
   document.body.style.paddingBottom = isChecklist ? "96px" : "24px";
-  if (!isChecklist) {
+  if (isMaint) {
     loadMaintenanceList();
   } else {
     render();
   }
 }
 
+// Links to each satellite site's own page, for the main app only.
+function renderSatellitePages() {
+  const main = document.getElementById("main");
+  main.innerHTML = "";
+  const intro = document.createElement("div");
+  intro.className = "sat-intro";
+  intro.textContent = "Each satellite site has its own page. Send each manager only their own link.";
+  main.appendChild(intro);
+  SATELLITE_SITES.forEach(s => {
+    const card = document.createElement("div");
+    card.className = "sat-card";
+    const name = document.createElement("div");
+    name.className = "sat-card-name";
+    name.textContent = s.name;
+    card.appendChild(name);
+    const actions = document.createElement("div");
+    actions.className = "sat-card-actions";
+    if (s.page) {
+      const open = document.createElement("a");
+      open.className = "sat-btn primary";
+      open.href = s.page;
+      open.textContent = "Open page";
+      actions.appendChild(open);
+      const copy = document.createElement("button");
+      copy.className = "sat-btn";
+      copy.textContent = "Copy link";
+      copy.onclick = async () => {
+        const ok = await copyPlain_(new URL(s.page, window.location.href).href);
+        flashButton_(copy, ok ? "Copied" : "Copy failed");
+      };
+      actions.appendChild(copy);
+    } else {
+      const soon = document.createElement("span");
+      soon.className = "sat-soon";
+      soon.textContent = "Page not built yet";
+      actions.appendChild(soon);
+    }
+    card.appendChild(actions);
+    main.appendChild(card);
+  });
+}
+
 document.getElementById("viewTabChecklist").onclick = () => setView("checklist");
 document.getElementById("viewTabMaintenance").onclick = () => setView("maintenance");
+document.getElementById("viewTabSatellites").onclick = () => setView("satellites");
 document.getElementById("maintRefreshBtn").onclick = () => loadMaintenanceList();
 
 /* ---- fetching + caching the shared list ---- */
@@ -2564,7 +2640,8 @@ function summaryCoverage_(year, month) {
 function summaryIssueSets_(year, month) {
   const { start, end } = monthBounds_(year, month);
   const cpIndex = checkpointIndex_();
-  const rows = (maintenanceItems || []).map(it => {
+  const siteNames = new Set(allSpacesFlat().map(s => s.name));
+  const rows = (maintenanceItems || []).filter(it => !IS_SATELLITE || siteNames.has(String(it.Space || ""))).map(it => {
     const cp = it["Checkpoint ID"] ? cpIndex[it["Checkpoint ID"]] : null;
     const ext = cp && cp.extType ? extinguisherType(cp.extType) : null;
     const issueRaw = String(it.Issue || "").trim();
@@ -2663,6 +2740,33 @@ function sectionText_(title, rows, kind) {
   return t;
 }
 
+function rangeText_(first, last, mName) {
+  if (!first || !last) return "";
+  return first.toDateString() === last.toDateString()
+    ? " (checks carried out on " + first.getDate() + " " + mName + ")"
+    : " (checks carried out " + first.getDate() + " to " + last.getDate() + " " + mName + ")";
+}
+
+// For a satellite page with a single space: which compliance types were
+// checked during the month, so the email can name what's done and what's left.
+function siteTypeCoverage_(space, year, month) {
+  const { start, end } = monthBounds_(year, month);
+  const log = checkLogItems || [];
+  const out = { done: [], missing: [], later: [], first: null, last: null };
+  applicableTypes_(space).forEach(t => {
+    const entry = log.find(it => it.Space === space.name && it["Compliance Type"] === t.id);
+    const d = entry ? parseSheetDate_(entry["Last Checked"]) : null;
+    if (!d || d < start) out.missing.push(t.label);
+    else if (d >= end) out.later.push(t.label);
+    else {
+      out.done.push(t.label);
+      if (!out.first || d < out.first) out.first = d;
+      if (!out.last || d > out.last) out.last = d;
+    }
+  });
+  return out;
+}
+
 function buildMonthlySummary(year, month, now) {
   now = now || new Date();
   const title = monthTitle_(year, month);
@@ -2674,7 +2778,25 @@ function buildMonthlySummary(year, month, now) {
   const notes = [];
 
   let intro = "This summary covers compliance issues for " + title + ".";
-  if (total > 0 && cov.unknown.length) {
+  const singleSite = IS_SATELLITE && allSpacesFlat().length === 1 ? allSpacesFlat()[0] : null;
+  if (singleSite) {
+    const tc = siteTypeCoverage_(singleSite, year, month);
+    const where = singleSite.name + " for " + title;
+    if (tc.later.length) {
+      intro = "This summary covers compliance issues for " + where + ".";
+      notes.push("Whether every check was completed in " + title + " can't be confirmed, because these have been checked again since: " + tc.later.join(", ") + ". The email doesn't say either way.");
+    } else if (tc.done.length && !tc.missing.length) {
+      intro = "Compliance checks for " + where + " have been completed: " + tc.done.join(", ") + rangeText_(tc.first, tc.last, mName) + ". The PDFs are attached.";
+    } else if (tc.done.length) {
+      intro = "Compliance checks for " + where + " are partly complete. Done: " + tc.done.join(", ") + ". Still to do: " + tc.missing.join(", ") + ". The PDFs for the completed checks are attached.";
+      notes.push("Not everything is checked for " + title + " yet (still to do: " + tc.missing.join(", ") + "). The email says so. Finish those checks first if you want it to read as complete.");
+    } else if (tc.missing.length) {
+      intro = isCurrent
+        ? "No compliance checks have been completed yet for " + where + "."
+        : "No completed compliance checks are recorded for " + where + ".";
+      notes.push("No checks are recorded for " + title + " yet. Generate your PDFs first, then open this again.");
+    }
+  } else if (total > 0 && cov.unknown.length) {
     notes.push("Whether every check was completed in " + title + " can't be confirmed, because these spaces have been checked again since: " + cov.unknown.join(", ") + ". The email doesn't say either way.");
   } else if (total > 0 && !cov.incomplete.length) {
     let range = "";
@@ -2697,6 +2819,7 @@ function buildMonthlySummary(year, month, now) {
 
   const summaryLine = plural_(sets.added.length, "new issue") + ", " + sets.stillOpen.length + " still open from earlier months, " + sets.resolved.length + " resolved.";
   const name = (ui.checkedBy || "").trim();
+  if (!name) notes.push("No name entered, so the email isn't signed. Add yours in the Your name box on the Checklist tab.");
   const sections = [
     ["New issues flagged in " + mName, sets.added, "added"],
     ["Still open from earlier months", sets.stillOpen, "open"],
@@ -2716,7 +2839,7 @@ function buildMonthlySummary(year, month, now) {
   text += "\nKind regards" + (name ? "\n" + name : "") + "\n";
 
   return {
-    subject: "Monthly Compliance Summary, " + title,
+    subject: "Monthly Compliance Summary, " + (singleSite ? singleSite.name + ", " : "") + title,
     html: html,
     text: text,
     notes: notes,
@@ -2742,8 +2865,8 @@ function renderSummaryPreview_() {
   });
 }
 
-async function openSummaryModal() {
-  const btn = document.getElementById("summaryBtn");
+async function openSummaryModal(trigger) {
+  const btn = (trigger && trigger.tagName) ? trigger : document.getElementById("summaryBtn");
   const label = btn.textContent;
   btn.disabled = true;
   btn.textContent = "Loading latest data...";
@@ -2766,6 +2889,8 @@ async function openSummaryModal() {
   });
   sel.value = now.getFullYear() + "-" + now.getMonth();
   sel.onchange = renderSummaryPreview_;
+  document.getElementById("summaryTo").textContent = FACILITIES_EMAIL;
+  document.getElementById("summaryHint").style.display = IS_SATELLITE ? "" : "none";
   renderSummaryPreview_();
   document.getElementById("summaryOverlay").classList.add("show");
 }
@@ -2821,6 +2946,21 @@ async function copyRich_(html, text) {
 }
 
 document.getElementById("summaryBtn").onclick = openSummaryModal;
+document.getElementById("satEmailBtn").onclick = () => openSummaryModal(document.getElementById("satEmailBtn"));
+document.getElementById("summaryCopyTo").onclick = async (e) => {
+  const btn = e.currentTarget;
+  const ok = await copyPlain_(FACILITIES_EMAIL);
+  flashButton_(btn, ok ? "Copied" : "Copy failed");
+};
+// Opens the phone's or computer's email app with To, subject and body filled
+// in. Plain text only, and it can't attach the PDFs (web pages can't do that).
+function mailtoUrl_(summary) {
+  return "mailto:" + FACILITIES_EMAIL + "?subject=" + encodeURIComponent(summary.subject) +
+    "&body=" + encodeURIComponent(summary.text.replace(/\n/g, "\r\n"));
+}
+document.getElementById("summaryMailto").onclick = () => {
+  if (currentSummary) window.location.href = mailtoUrl_(currentSummary);
+};
 document.getElementById("summaryClose").onclick = () => {
   document.getElementById("summaryOverlay").classList.remove("show");
 };
