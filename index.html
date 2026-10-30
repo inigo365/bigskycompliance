@@ -425,6 +425,11 @@
   }
   .flush-row span{font-size:12.5px;color:#3a3d40;}
   .actioned-wrap{margin-top:8px;}
+  .fixed-row{display:flex;align-items:center;gap:8px;margin-top:8px;cursor:pointer;}
+  .fixed-row input[type="checkbox"]{width:17px;height:17px;flex:0 0 auto;accent-color:var(--accent);}
+  .fixed-row span{font-size:12.5px;font-weight:600;color:var(--ink);}
+  .fixed-hint{font-size:11.5px;color:var(--muted);margin:3px 0 0 25px;}
+  .fixed-hint:empty{display:none;}
   .actioned-label{
     font-size:10.5px;text-transform:uppercase;letter-spacing:.04em;
     color:var(--muted);font-weight:700;margin-bottom:4px;
@@ -932,7 +937,7 @@ const BIGSKY_LOGO_ASPECT = 700 / 142; // width / height of the source PNG
    ====================================================================== */
 /* App version, shown top right in the header so it is obvious which copy is
    running. Bump this every time index.html is changed. */
-const APP_VERSION = "v2.4";
+const APP_VERSION = "v2.6";
 const APP_VERSION_DATE = "29 Oct 2026";
 
 /* This file is the MAIN app. The satellite pages (satellite/*.html) are generated
@@ -1224,8 +1229,8 @@ function addCheckpoint(spaceId, typeId, name, extType) {
   if (!state.items[spaceId]) state.items[spaceId] = {};
   if (!state.items[spaceId][typeId]) state.items[spaceId][typeId] = {};
   state.items[spaceId][typeId][cp.id] = type.kind === "passfail"
-    ? { status: "pass", notes: "", actioned: "" }
-    : { hot: "", cold: "", notes: "", actioned: "", flush: true };
+    ? { status: "pass", notes: "", actioned: "", fixed: false }
+    : { hot: "", cold: "", notes: "", actioned: "", fixed: false, flush: true };
   saveState();
 }
 
@@ -1321,9 +1326,9 @@ function defaultState() {
       state.items[spaceId][t.id] = {};
       CHECKPOINTS[spaceId][t.id].forEach(cp => {
         if (t.kind === "passfail") {
-          state.items[spaceId][t.id][cp.id] = { status: "pass", notes: "", actioned: "" };
+          state.items[spaceId][t.id][cp.id] = { status: "pass", notes: "", actioned: "", fixed: false };
         } else {
-          state.items[spaceId][t.id][cp.id] = { hot: "", cold: "", notes: "", actioned: "", flush: true };
+          state.items[spaceId][t.id][cp.id] = { hot: "", cold: "", notes: "", actioned: "", fixed: false, flush: true };
         }
       });
     });
@@ -1337,9 +1342,9 @@ function defaultItemsForSpace(spaceId) {
     items[t.id] = {};
     CHECKPOINTS[spaceId][t.id].forEach(cp => {
       if (t.kind === "passfail") {
-        items[t.id][cp.id] = { status: "pass", notes: "", actioned: "" };
+        items[t.id][cp.id] = { status: "pass", notes: "", actioned: "", fixed: false };
       } else {
-        items[t.id][cp.id] = { hot: "", cold: "", notes: "", actioned: "", flush: true };
+        items[t.id][cp.id] = { hot: "", cold: "", notes: "", actioned: "", fixed: false, flush: true };
       }
     });
   });
@@ -1488,11 +1493,16 @@ function isLocallyFlagged_(type, data) {
   return type.kind === "passfail" ? data.status === "fail" : !!(data.notes && data.notes.trim());
 }
 
+// Flagged and not yet sorted: what the red dots and "Needs attention" mean.
+function isOutstandingLocally_(type, data) {
+  return isLocallyFlagged_(type, data) && !data.fixed;
+}
+
 function spaceHasIssue(spaceId) {
   return COMPLIANCE_TYPES.some(t => {
     const cps = CHECKPOINTS[spaceId][t.id];
     return cps.some(cp => {
-      const localFlag = isLocallyFlagged_(t, state.items[spaceId][t.id][cp.id]);
+      const localFlag = isOutstandingLocally_(t, state.items[spaceId][t.id][cp.id]);
       return localFlag || !!openMaintenanceForCheckpoint(cp.id);
     });
   });
@@ -1541,7 +1551,7 @@ function renderMain() {
     left.className = "section-head-left";
     const cps = CHECKPOINTS[space.id][t.id];
     const sectionIssue = cps.some(cp => {
-      const localFlag = isLocallyFlagged_(t, state.items[space.id][t.id][cp.id]);
+      const localFlag = isOutstandingLocally_(t, state.items[space.id][t.id][cp.id]);
       return localFlag || !!openMaintenanceForCheckpoint(cp.id);
     });
     if (sectionIssue) {
@@ -1567,7 +1577,9 @@ function renderMain() {
           d.status = "pass";
           d.notes = "";
           d.actioned = "";
+          d.fixed = false;
           if (pushedMaintenance[cp.id]) delete pushedMaintenance[cp.id];
+          delete pushedMaintenance["act:" + cp.id];
         });
         savePushed();
         saveState();
@@ -2010,12 +2022,12 @@ function renderAddRow(spaceId, typeId) {
 
 // "Action taken" box shown under a failed item, so the PDF can record what
 // has actually been done about it (reported, fixed, tag replaced, etc.).
-function buildActionedBox_(data) {
+function buildActionedBox_(data, cp) {
   const wrap = document.createElement("div");
   wrap.className = "actioned-wrap";
   const label = document.createElement("div");
   label.className = "actioned-label";
-  label.textContent = "Action taken";
+  label.textContent = "Action taken (also goes on the Maintenance List)";
   wrap.appendChild(label);
   const box = document.createElement("textarea");
   box.className = "actioned";
@@ -2023,6 +2035,41 @@ function buildActionedBox_(data) {
   box.value = data.actioned || "";
   box.oninput = (e) => { data.actioned = e.target.value; scheduleSave(); };
   wrap.appendChild(box);
+
+  // For things sorted there and then (e.g. a tag replaced): the failure and the
+  // action stay on the PDF, but it is not added to the Maintenance List, so it
+  // never reaches the monthly email. If it is already on the list, ticking this
+  // marks it resolved there.
+  const fixedRow = document.createElement("label");
+  fixedRow.className = "fixed-row";
+  const cb = document.createElement("input");
+  cb.type = "checkbox";
+  const fixedText = document.createElement("span");
+  fixedText.textContent = "Fixed on the spot";
+  fixedRow.appendChild(cb);
+  fixedRow.appendChild(fixedText);
+  wrap.appendChild(fixedRow);
+  const hint = document.createElement("div");
+  hint.className = "fixed-hint";
+  wrap.appendChild(hint);
+
+  function refresh() {
+    cb.checked = !!data.fixed;
+    const alreadyListed = !!(cp && openMaintenanceForCheckpoint(cp.id));
+    if (!data.fixed) {
+      label.textContent = "Action taken (also goes on the Maintenance List)";
+      hint.textContent = "";
+    } else if (alreadyListed) {
+      label.textContent = "Action taken (PDF only)";
+      hint.textContent = "This will mark it resolved on the Maintenance List.";
+    } else {
+      label.textContent = "Action taken (PDF only, not added to the Maintenance List)";
+      hint.textContent = "";
+    }
+  }
+  cb.onchange = (e) => { data.fixed = e.target.checked; saveState(); refresh(); };
+  wrap.refresh = refresh;
+  refresh();
   return wrap;
 }
 
@@ -2062,14 +2109,17 @@ function renderPassFailItem(spaceId, typeId, cp) {
     data.status = "pass";
     data.notes = ""; // a Pass carries no failure note, so old text can't print on the PDF
     data.actioned = "";
+    data.fixed = false;
     saveState();
-    if (pushedMaintenance[cp.id]) { delete pushedMaintenance[cp.id]; savePushed(); }
+    delete pushedMaintenance["act:" + cp.id];
+    if (pushedMaintenance[cp.id]) delete pushedMaintenance[cp.id];
+    savePushed();
     render();
   };
   failBtn.onclick = () => {
     // Notes only belong to a Fail, so anything left over from while the item
     // was on Pass is stale: start the box clean before prefilling.
-    if (data.status !== "fail") { data.notes = ""; data.actioned = ""; }
+    if (data.status !== "fail") { data.notes = ""; data.actioned = ""; data.fixed = false; }
     data.status = "fail";
     // If this checkpoint already has an open entry on the shared Maintenance
     // List, tapping Fail means it still has not been fixed, so carry the
@@ -2080,6 +2130,18 @@ function renderPassFailItem(spaceId, typeId, cp) {
       const open = openMaintenanceForCheckpoint(cp.id);
       const issue = open && open.Issue ? String(open.Issue).trim() : "";
       if (issue && issue !== "Marked Fail (no note added)") data.notes = issue;
+    }
+    // Same for the Action note, so the checklist, the PDF and the Maintenance
+    // List all say the same thing. Remembered as already sent, so it isn't
+    // sent straight back.
+    if (!(data.actioned && data.actioned.trim())) {
+      const openEntry = openMaintenanceForCheckpoint(cp.id);
+      const note = openEntry && openEntry["Action Note"] ? String(openEntry["Action Note"]).trim() : "";
+      if (note) {
+        data.actioned = note;
+        pushedMaintenance["act:" + cp.id] = note;
+        savePushed();
+      }
     }
     saveState();
     render();
@@ -2100,7 +2162,7 @@ function renderPassFailItem(spaceId, typeId, cp) {
     notes.value = data.notes || "";
     notes.oninput = (e) => { data.notes = e.target.value; scheduleSave(); };
     item.appendChild(notes);
-    item.appendChild(buildActionedBox_(data));
+    item.appendChild(buildActionedBox_(data, cp));
   }
 
   return item;
@@ -2162,7 +2224,7 @@ function renderWaterItem(spaceId, typeId, cp) {
 
   // Water items have no Fail button: a note is what flags one, so the Action
   // taken box appears as soon as there is a note.
-  const actionedWrap = buildActionedBox_(data);
+  const actionedWrap = buildActionedBox_(data, cp);
   actionedWrap.style.display = (data.notes && data.notes.trim()) ? "" : "none";
 
   const notes = document.createElement("textarea");
@@ -2173,9 +2235,11 @@ function renderWaterItem(spaceId, typeId, cp) {
     data.notes = e.target.value;
     scheduleSave();
     actionedWrap.style.display = data.notes.trim() ? "" : "none";
-    if (!data.notes.trim() && data.actioned) {
+    if (!data.notes.trim() && (data.actioned || data.fixed)) {
       data.actioned = "";
+      data.fixed = false;
       actionedWrap.querySelector("textarea").value = "";
+      actionedWrap.refresh();
     }
     if (!data.notes.trim() && pushedMaintenance[cp.id]) {
       delete pushedMaintenance[cp.id];
@@ -2472,7 +2536,18 @@ async function syncFlaggedItemsForSpace(space, types) {
   // already-open item get recognised without re-adding it.
   await silentRefreshMaintenanceList();
 
-  const toPush = []; // { checkpointId, payload }
+  const toPush = []; // { checkpointId, payload, actionText }
+  // Action taken on the checklist goes to the Action note on the Maintenance
+  // List. Sent only when it is new or changed since last sent, so an older
+  // checklist entry never overwrites a note edited later on the list.
+  const noteUpdates = []; // { cpId, entryId, text }
+  const resolves = []; // { cpId, entryId }: fixed on the spot, but already on the list
+  function queueActionNote(cpId, entryId, text, current) {
+    const key = "act:" + cpId;
+    if (!text || text === pushedMaintenance[key]) return;
+    if (text === current) { pushedMaintenance[key] = text; return; } // sheet already has it
+    noteUpdates.push({ cpId: cpId, entryId: entryId, text: text });
+  }
   typesToSync.forEach(type => {
     const cps = CHECKPOINTS[space.id][type.id];
     cps.forEach(cp => {
@@ -2486,8 +2561,20 @@ async function syncFlaggedItemsForSpace(space, types) {
       //   1. The shared sheet already has an OPEN row for this exact
       //      checkpoint (raised here or on another device) — recognise
       //      it and move on.
-      if (openMaintenanceForCheckpoint(cp.id)) {
+      const actionText = String(data.actioned || "").trim();
+      const openEntry = openMaintenanceForCheckpoint(cp.id);
+      if (data.fixed) {
+        // Sorted on the spot: stays on the PDF only. Never added to the list.
+        // If it is already there, keep a record of what was done and resolve it.
+        if (openEntry) {
+          queueActionNote(cp.id, openEntry.ID, actionText, String(openEntry["Action Note"] || "").trim());
+          resolves.push({ cpId: cp.id, entryId: openEntry.ID });
+        }
+        return;
+      }
+      if (openEntry) {
         pushedMaintenance[cp.id] = "remote";
+        queueActionNote(cp.id, openEntry.ID, actionText, String(openEntry["Action Note"] || "").trim());
         return;
       }
       //   2. We've already successfully pushed this checkpoint from this
@@ -2514,6 +2601,7 @@ async function syncFlaggedItemsForSpace(space, types) {
       const id = "m_" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
       toPush.push({
         checkpointId: cp.id,
+        actionText: actionText,
         payload: {
           action: "add",
           id: id,
@@ -2528,7 +2616,7 @@ async function syncFlaggedItemsForSpace(space, types) {
     });
   });
 
-  if (!toPush.length) {
+  if (!toPush.length && !noteUpdates.length && !resolves.length) {
     savePushed();
     return 0;
   }
@@ -2543,11 +2631,31 @@ async function syncFlaggedItemsForSpace(space, types) {
     if (ok) {
       pushedMaintenance[entry.checkpointId] = entry.payload.id;
       successCount++;
+      // a brand new row starts with an empty Action note, so send it straight after
+      if (entry.actionText) noteUpdates.push({ cpId: entry.checkpointId, entryId: entry.payload.id, text: entry.actionText });
     }
     // if it failed, leave it unmarked so the next sync retries it
   }
+  let noteCount = 0;
+  for (const u of noteUpdates) {
+    const ok = await pushMaintenanceAction({ action: "updateNote", id: u.entryId, note: u.text });
+    if (ok) {
+      pushedMaintenance["act:" + u.cpId] = u.text;
+      noteCount++;
+    }
+  }
+  let resolvedCount = 0;
+  for (const r of resolves) {
+    const ok = await pushMaintenanceAction({ action: "resolve", id: r.entryId, resolvedAt: new Date().toISOString() });
+    if (ok) {
+      // forget it, so un-ticking later treats a continuing failure as a fresh issue
+      delete pushedMaintenance[r.cpId];
+      delete pushedMaintenance["act:" + r.cpId];
+      resolvedCount++;
+    }
+  }
   savePushed();
-  if (successCount > 0) {
+  if (successCount > 0 || noteCount > 0 || resolvedCount > 0) {
     await silentRefreshMaintenanceList(); // refresh the shared cache so badges update immediately
   }
   return successCount;
@@ -2851,10 +2959,12 @@ function summaryIssueSets_(year, month) {
     };
   });
   const flaggedBefore = r => !r.flagged || r.flagged < start;
+  // Anything already resolved by the end of the month is left out. The email
+  // is for what still needs dealing with, not what was fixed in-house.
+  const resolvedByEnd = r => r.isResolved && (!r.resolved || r.resolved < end);
   return {
-    added: rows.filter(r => r.flagged && r.flagged >= start && r.flagged < end),
-    stillOpen: rows.filter(r => flaggedBefore(r) && (!r.isResolved || (r.resolved && r.resolved >= end))),
-    resolved: rows.filter(r => r.isResolved && r.resolved && r.resolved >= start && r.resolved < end)
+    added: rows.filter(r => r.flagged && r.flagged >= start && r.flagged < end && !resolvedByEnd(r)),
+    stillOpen: rows.filter(r => flaggedBefore(r) && !resolvedByEnd(r))
   };
 }
 
@@ -2901,8 +3011,6 @@ function rowRest_(r, kind) {
   } else if (kind === "open") {
     if (r.flagged) bits.push("open since " + dayLabel_(r.flagged));
     if (r.isResolved && r.resolved) bits.push("since resolved " + dayLabel_(r.resolved));
-  } else if (r.resolved) {
-    bits.push("resolved " + dayLabel_(r.resolved));
   }
   if (bits.length) t += " (" + bits.join(", ") + ")";
   if (!r.isResolved && r.action) t += ". Action: " + r.action;
@@ -3019,11 +3127,12 @@ function buildMonthlySummary(year, month, now) {
     notes.push(plural_(cov.incomplete.length, "space is", "spaces are") + " not fully checked for " + title + " (" + cov.incomplete.join(", ") + "). The email says so. Finish those checks first if you want it to read as complete.");
   }
 
-  const summaryLine = plural_(sets.added.length, "new issue") + ", " + sets.stillOpen.length + " still open from earlier months, " + sets.resolved.length + " resolved.";
+  const summaryLine = (sets.added.length || sets.stillOpen.length)
+    ? plural_(sets.added.length, "new issue") + " and " + sets.stillOpen.length + " still open from earlier months."
+    : "No outstanding issues.";
   const sections = [
     ["New issues flagged in " + mName, sets.added, "added"],
-    ["Still open from earlier months", sets.stillOpen, "open"],
-    ["Resolved in " + mName, sets.resolved, "resolved"]
+    ["Still open from earlier months", sets.stillOpen, "open"]
   ];
 
   let html = '<div style="font-family:Arial,Helvetica,sans-serif;font-size:14px;line-height:1.5;color:#1c2024;">' +
@@ -3042,7 +3151,7 @@ function buildMonthlySummary(year, month, now) {
     html: html,
     text: text,
     notes: notes,
-    counts: { added: sets.added.length, stillOpen: sets.stillOpen.length, resolved: sets.resolved.length }
+    counts: { added: sets.added.length, stillOpen: sets.stillOpen.length }
   };
 }
 
@@ -3200,7 +3309,9 @@ document.getElementById("summaryCopyPlain").onclick = async (e) => {
    ====================================================================== */
 // What was done about a failed item. Blank for anything that passed.
 function pdfActionedFor_(type, data) {
-  return isLocallyFlagged_(type, data) ? String(data.actioned || "") : "";
+  if (!isLocallyFlagged_(type, data)) return "";
+  const text = String(data.actioned || "");
+  return data.fixed ? "Fixed on the spot" + (text ? ": " + text : "") : text;
 }
 
 function pdfNoteForPassFail_(data) {
