@@ -937,7 +937,7 @@ const BIGSKY_LOGO_ASPECT = 700 / 142; // width / height of the source PNG
    ====================================================================== */
 /* App version, shown top right in the header so it is obvious which copy is
    running. Bump this every time index.html is changed. */
-const APP_VERSION = "v2.6";
+const APP_VERSION = "v2.7";
 const APP_VERSION_DATE = "29 Oct 2026";
 
 /* This file is the MAIN app. The satellite pages (satellite/*.html) are generated
@@ -947,6 +947,11 @@ const APP_FILE = "index.html";
 
 // Where the monthly summary email is addressed.
 const FACILITIES_EMAIL = "facilities@bigskylondon.com";
+
+// The monthly summary email works off the main spaces only for now: satellite
+// sites are left out of its issues and its "all spaces completed" count. They
+// still show on the Maintenance List tab. Set to true to bring them back in.
+const EMAIL_INCLUDES_SATELLITES = false;
 
 const MAINTENANCE_API_URL = "https://script.google.com/macros/s/AKfycbznKry2pHDDGfTZItJbeleeCnLRj3ygV9geT46RBFFyLmWFUfu3CsVv8lUelXYF4oFJ/exec";
 const MAINTENANCE_SHEET_URL = "https://docs.google.com/spreadsheets/d/1zxLffQ_Fb_-oK7ndJMgNyKR-d7IOMIQ8veTSad6NzwA/edit?usp=sharing";
@@ -2912,7 +2917,7 @@ function summaryCoverage_(year, month) {
   const { start, end } = monthBounds_(year, month);
   const out = { done: [], incomplete: [], unknown: [], first: null, last: null };
   const log = checkLogItems || [];
-  allMaintenanceSpaces_().forEach(space => {
+  (EMAIL_INCLUDES_SATELLITES ? allMaintenanceSpaces_() : allSpacesFlat()).forEach(space => {
     const applicable = applicableTypes_(space);
     if (!applicable.length) return;
     let incomplete = false, later = false, oldest = null, newest = null;
@@ -2939,7 +2944,12 @@ function summaryIssueSets_(year, month) {
   const { start, end } = monthBounds_(year, month);
   const cpIndex = checkpointIndex_();
   const siteNames = new Set(allSpacesFlat().map(s => s.name));
-  const rows = (maintenanceItems || []).filter(it => !IS_SATELLITE || siteNames.has(String(it.Space || ""))).map(it => {
+  const satelliteNames = new Set(SATELLITE_SITES.map(s => s.name));
+  const rows = (maintenanceItems || []).filter(it => {
+    const sp = String(it.Space || "");
+    if (IS_SATELLITE) return siteNames.has(sp); // a satellite page's own email: its own site only
+    return EMAIL_INCLUDES_SATELLITES || !satelliteNames.has(sp);
+  }).map(it => {
     const cp = it["Checkpoint ID"] ? cpIndex[it["Checkpoint ID"]] : null;
     const ext = cp && cp.extType ? extinguisherType(cp.extType) : null;
     const issueRaw = String(it.Issue || "").trim();
