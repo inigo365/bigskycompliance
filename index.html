@@ -942,7 +942,7 @@ const BIGSKY_LOGO_ASPECT = 700 / 142; // width / height of the source PNG
    ====================================================================== */
 /* App version, shown top right in the header so it is obvious which copy is
    running. Bump this every time index.html is changed. */
-const APP_VERSION = "v2.9";
+const APP_VERSION = "v2.10";
 const APP_VERSION_DATE = "24 Nov 2026";
 
 /* This file is the MAIN app. The satellite pages (satellite/*.html) are generated
@@ -1392,7 +1392,7 @@ function saveState() {
   const bar = document.getElementById("saveBar");
   bar.textContent = "Saved just now";
   clearTimeout(saveTimer);
-  saveTimer = setTimeout(() => { bar.textContent = "All changes saved on this device"; }, 1600);
+  saveTimer = setTimeout(() => { bar.textContent = idleSaveText_(); }, 1600);
 }
 
 let textSaveTimer = null;
@@ -2677,6 +2677,158 @@ async function syncFlaggedItemsForSpace(space, types) {
   return successCount;
 }
 
+/* ======================================================================
+   MAINTENANCE LIST SYNC
+   When PDFs are generated, one "sync job" for the whole space is SAVED ON THE
+   PHONE first, then sent as a single request. The job stays saved until the
+   server confirms it, and is retried automatically (when the app comes back to
+   the front, when the connection returns, and every minute). So leaving the app
+   to check Drive, a dropped signal or a slow server can never lose an update.
+   The server (script v2) makes the list match the checklist: missing flagged
+   items are added, ones already open are overwritten with the latest wording,
+   "fixed on the spot" ones are resolved, and the checked date is recorded.
+   Sending the same job twice is harmless.
+   ====================================================================== */
+const SYNC_JOBS_KEY = PUSHED_KEY.replace("pushed", "syncjobs");
+function loadSyncJobs_() {
+  try {
+    const raw = localStorage.getItem(SYNC_JOBS_KEY);
+    const arr = raw ? JSON.parse(raw) : [];
+    return Array.isArray(arr) ? arr : [];
+  } catch (e) { return []; }
+}
+function saveSyncJobs_(jobs) {
+  try { localStorage.setItem(SYNC_JOBS_KEY, JSON.stringify(jobs)); } catch (e) {}
+  showIdleSaveText_();
+}
+function idleSaveText_() {
+  return loadSyncJobs_().length
+    ? "Maintenance List update waiting to send, will retry automatically"
+    : "All changes saved on this device";
+}
+function showIdleSaveText_() {
+  const bar = document.getElementById("saveBar");
+  if (bar && !/^Saved just now/.test(bar.textContent)) bar.textContent = idleSaveText_();
+}
+
+// A snapshot of everything flagged in this space, as it stands right now.
+function buildSyncJob_(space, selectedTypes) {
+  const items = [];
+  const flaggedAt = new Date().toISOString();
+  COMPLIANCE_TYPES.forEach(type => {
+    CHECKPOINTS[space.id][type.id].forEach(cp => {
+      const data = state.items[space.id][type.id][cp.id];
+      if (!isLocallyFlagged_(type, data)) return;
+      const typedIssue = (data.notes && data.notes.trim()) ? data.notes.trim() : "";
+      const ext = type.id === "fireExtinguishers" ? extinguisherType(cp.extType) : null;
+      items.push({
+        id: "m_" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+        checkpointId: cp.id,
+        checkpoint: ext ? cp.name + " (" + ext.label + ")" : cp.name,
+        complianceType: type.id,
+        issue: typedIssue || (type.kind === "passfail" ? "Marked Fail (no note added)" : ""),
+        weakIssue: !typedIssue,
+        actionNote: String(data.actioned || "").trim(),
+        fixed: !!data.fixed,
+        dateFlagged: flaggedAt
+      });
+    });
+  });
+  return {
+    jobId: "j_" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+    spaceId: space.id,
+    space: space.name,
+    checkedAt: new Date().toISOString(),
+    checkedBy: (ui.checkedBy || "").trim(),
+    checkTypes: selectedTypes.map(t => t.id),
+    items: items
+  };
+}
+
+// Saves the job on the phone. A newer job for the same space replaces an older one.
+function queueSyncJob_(space, selectedTypes) {
+  const job = buildSyncJob_(space, selectedTypes);
+  saveSyncJobs_(loadSyncJobs_().filter(j => j.spaceId !== space.id).concat([job]));
+  return job;
+}
+
+async function postSheetJson_(payload) {
+  const opts = { method: "POST", headers: { "Content-Type": "text/plain;charset=utf-8" }, body: JSON.stringify(payload) };
+  async function attempt(extra) {
+    const res = await fetch(MAINTENANCE_API_URL, Object.assign({}, opts, extra));
+    if (!res.ok) return null;
+    return await res.json();
+  }
+  try {
+    // keepalive lets the request finish even if the app is sent to the background
+    return await attempt({ keepalive: true });
+  } catch (e) {
+    try { return await attempt({}); } catch (e2) { return null; }
+  }
+}
+
+// Used only while the Google script is still the old version, which ignores the
+// one-request sync: falls back to the earlier add / note / log-check calls.
+async function legacySyncJob_(job) {
+  const found = findSpace(job.spaceId);
+  if (!found) return;
+  const types = COMPLIANCE_TYPES.filter(t => job.checkTypes.indexOf(t.id) >= 0);
+  await syncFlaggedItemsForSpace(found.space);
+  await logChecksForSpace(found.space, types);
+}
+
+let syncingJobs_ = false;
+async function runSyncJobs_(quiet) {
+  if (syncingJobs_) return;
+  if (!loadSyncJobs_().length) return;
+  syncingJobs_ = true;
+  const done = [];
+  let stuck = false, oldScript = false;
+  try {
+    while (true) {
+      const job = loadSyncJobs_()[0];
+      if (!job) break;
+      const res = await postSheetJson_({
+        action: "syncSpace",
+        space: job.space,
+        checkedAt: job.checkedAt,
+        checkedBy: job.checkedBy,
+        checkTypes: job.checkTypes,
+        items: job.items
+      });
+      if (res && res.success && res.scriptVersion >= 2) {
+        saveSyncJobs_(loadSyncJobs_().filter(j => j.jobId !== job.jobId));
+        done.push({ space: job.space, added: res.added || 0, updated: res.updated || 0, resolved: res.resolved || 0 });
+      } else if (res && res.success) {
+        // old script: it accepted the request but did nothing with it
+        oldScript = true;
+        await legacySyncJob_(job);
+        saveSyncJobs_(loadSyncJobs_().filter(j => j.jobId !== job.jobId));
+        done.push({ space: job.space, added: 0, updated: 0, resolved: 0, legacy: true });
+      } else {
+        stuck = true;   // no confirmation: the job stays saved and is retried later
+        break;
+      }
+    }
+  } finally {
+    syncingJobs_ = false;
+  }
+  if (done.length) await silentRefreshMaintenanceList();
+  done.forEach(d => {
+    const parts = [];
+    if (d.added) parts.push(d.added + " added");
+    if (d.updated) parts.push(d.updated + " updated");
+    if (d.resolved) parts.push(d.resolved + " resolved");
+    showToast(parts.length ? "Maintenance List updated for " + d.space + " (" + parts.join(", ") + ")" : "Check recorded for " + d.space);
+  });
+  if (oldScript) showToast("Update the Maintenance List script to overwrite existing reasons");
+  if (stuck && !quiet) showToast("Couldn't reach the Maintenance List. Saved, will retry automatically");
+}
+
+document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") runSyncJobs_(true); });
+window.addEventListener("online", () => runSyncJobs_(true));
+window.addEventListener("pageshow", () => runSyncJobs_(true));
+
 /* ---- rendering the accordion, one section per space (14 total) ---- */
 let openMaintSpaces = new Set();
 
@@ -3553,12 +3705,9 @@ async function generateSpacePDFs() {
   // the whole space (not just the types in this PDF batch) also fixes
   // flagged items in unselected types never reaching the sheet.
   function runBackgroundSync() {
-    syncFlaggedItemsForSpace(space).then(count => {
-      if (count > 0) {
-        showToast(count + " item" + (count === 1 ? "" : "s") + " added to Maintenance List");
-      }
-    });
-    logChecksForSpace(space, selectedTypes);
+    // Already saved and sent before the share sheet opened; this just nudges
+    // a retry in case that first attempt did not get through.
+    runSyncJobs_();
   }
 
   // Tries the share sheet, and if it fails for any reason other than
@@ -3596,6 +3745,13 @@ async function generateSpacePDFs() {
     }
     return { success: false, cancelled: false };
   }
+
+  // Save the Maintenance List update on the phone and send it NOW, before the
+  // share sheet opens (not awaited, so the share sheet is not delayed). Waiting
+  // until the sheet closed meant leaving the app to check Drive could stop the
+  // update from ever being sent.
+  queueSyncJob_(space, selectedTypes);
+  runSyncJobs_();
 
   // Primary path: the native share sheet — phones only. Desktop browsers
   // increasingly support the same Web Share API now, which was making
@@ -3835,6 +3991,8 @@ render();
 // refresh or a tab switch.
 silentRefreshMaintenanceList();
 setInterval(silentRefreshMaintenanceList, 60000);
+runSyncJobs_(true);
+setInterval(() => runSyncJobs_(true), 60000);
 </script>
 
 <script>
