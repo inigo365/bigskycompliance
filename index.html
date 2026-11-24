@@ -464,6 +464,11 @@
     -webkit-transform:translate3d(0,0,0);
     will-change:transform;
   }
+  /* Typing comfort: note boxes grow with their text (no inner scrolling or
+     cut-off), and the fixed footer steps aside while a field is focused so it
+     can never sit over what is being typed. */
+  .notes,.temp-notes,.actioned,.maint-note{resize:none;overflow-y:hidden;scroll-margin-top:120px;scroll-margin-bottom:24px;}
+  body.typing footer{display:none !important;}
   .pdf-btn{
     width:100%;
     max-width:680px;
@@ -937,8 +942,8 @@ const BIGSKY_LOGO_ASPECT = 700 / 142; // width / height of the source PNG
    ====================================================================== */
 /* App version, shown top right in the header so it is obvious which copy is
    running. Bump this every time index.html is changed. */
-const APP_VERSION = "v2.7";
-const APP_VERSION_DATE = "29 Oct 2026";
+const APP_VERSION = "v2.9";
+const APP_VERSION_DATE = "24 Nov 2026";
 
 /* This file is the MAIN app. The satellite pages (satellite/*.html) are generated
    copies of it with IS_SATELLITE = true and their own site data. */
@@ -1120,16 +1125,16 @@ const CHECKPOINTS_DEFAULT = {
     "waterTemp": [{ id: "waterTemp_msxbfv86gb4c", name: "Kitchen" }, { id: "waterTemp_msxbfxnxfwvp", name: "Hair & Makeup" }],
   },
   "studio8": {
-    "emergencyLighting": [{ id: "emergencyLighting_msxbjnpikmn5", name: "Hair & Makeup Exit" }],
-    "fireExtinguishers": [{ id: "fireExtinguishers_msxbiu5cvmqq", name: "Main Entrance", extType: "co2" }, { id: "fireExtinguishers_msxbizbm1v2o", name: "Main Entrance", extType: "foam" }],
-    "fireDoors": [{ id: "fireDoors_msxbinc44swy", name: "Hair Basin" }],
-    "waterTemp": [{ id: "waterTemp_msxbid7f13rp", name: "Hair Basin" }],
+    "emergencyLighting": [{ id: "emergencyLighting_mwmar2ysrum9", name: "Storage Area" }, { id: "emergencyLighting_mwmar6b7rpnq", name: "Main Exit" }, { id: "emergencyLighting_mwmarak1rdqb", name: "M&S Sign" }, { id: "emergencyLighting_mwmarimph33e", name: "Office Exit Sign" }, { id: "emergencyLighting_mwmasbv0l73p", name: "Back Fire Exit" }],
+    "fireExtinguishers": [{ id: "fireExtinguishers_msxbiu5cvmqq", name: "Main Space", extType: "co2" }, { id: "fireExtinguishers_msxbizbm1v2o", name: "Main Space", extType: "foam" }],
+    "fireDoors": [{ id: "fireDoors_mwmappqngfuh", name: "Back Exit" }],
+    "waterTemp": [{ id: "waterTemp_mwma64kmzwk8", name: "Kitchen Sink" }],
   },
   "studio9": {
-    "emergencyLighting": [{ id: "emergencyLighting_msxbltt26m83", name: "Hair & Makeup Exit" }, { id: "emergencyLighting_msxblz4bwp8p", name: "Above Main Entrance" }],
-    "fireExtinguishers": [{ id: "fireExtinguishers_msxbkzthn2pp", name: "Entrance", extType: "foam" }, { id: "fireExtinguishers_msxbl322vugx", name: "Entrance", extType: "co2" }],
-    "fireDoors": [{ id: "fireDoors_msxble3f9i6h", name: "Hair & Makeup" }],
-    "waterTemp": [{ id: "waterTemp_msxbktopo66n", name: "Hair Basin" }],
+    "emergencyLighting": [{ id: "emergencyLighting_mwmaiejm7p97", name: "Back Fire Exit" }, { id: "emergencyLighting_mwmaik1a5url", name: "Main Cove" }, { id: "emergencyLighting_mwmaipgggs62", name: "Upstairs Office" }, { id: "emergencyLighting_mwmaj91gs5l1", name: "Main Space" }, { id: "emergencyLighting_mwmajkpydaww", name: "Main Space Exit Sign" }, { id: "emergencyLighting_mwmalip0dsm0", name: "Hair & Makeup" }, { id: "emergencyLighting_mwmam0v556yp", name: "Hair & Makeup Exit" }, { id: "emergencyLighting_mwmamznvhlwd", name: "Storage Area" }, { id: "emergencyLighting_mwman4fmted8", name: "Main Exit" }],
+    "fireExtinguishers": [{ id: "fireExtinguishers_mwma7i2us5ug", name: "Kitchen", extType: "co2" }, { id: "fireExtinguishers_mwma7jnqvm95", name: "Kitchen", extType: "foam" }, { id: "fireExtinguishers_mwma84tx5vb4", name: "Storage Space", extType: "foam" }, { id: "fireExtinguishers_mwma869hsrrb", name: "Storage Space", extType: "co2" }],
+    "fireDoors": [{ id: "fireDoors_msxble3f9i6h", name: "Hair & Makeup" }, { id: "fireDoors_mwma8qn27xng", name: "Reception Exit" }],
+    "waterTemp": [{ id: "waterTemp_msxbktopo66n", name: "Hair Basin" }, { id: "waterTemp_mwma8g5acejc", name: "Kitchen Sink" }],
   },
   "studio10": {
     "emergencyLighting": [{ id: "emergencyLighting_msxbph47cj9x", name: "Catering" }, { id: "emergencyLighting_msxbpl8ay30b", name: "Shutters" }, { id: "emergencyLighting_msxbprjom5io", name: "Main Right Hand Side" }, { id: "emergencyLighting_msxbpwnjm111", name: "Main Left Hand Side" }, { id: "emergencyLighting_msxbq2019h6g", name: "Hair & Makeup" }, { id: "emergencyLighting_msxbq5cgwxf7", name: "Staircase" }, { id: "emergencyLighting_msxbqbd2a3jm", name: "Upstairs Toilet" }, { id: "emergencyLighting_msxbqdsqmh4r", name: "Fire Exit" }],
@@ -1144,10 +1149,10 @@ const CHECKPOINTS_DEFAULT = {
     "waterTemp": [{ id: "waterTemp_mtr8a7lrdg33", name: "Staff Kitchen" }, { id: "waterTemp_mtr8ab83m10z", name: "Cafe Sink" }, { id: "waterTemp_mtr8antdior2", name: "Mens Bathroom Sink 1" }, { id: "waterTemp_mtr8aq8qxf12", name: "Mens Bathroom Sink 2" }, { id: "waterTemp_mtr8ax1yfr0d", name: "Womens Bathroom Sink 1" }, { id: "waterTemp_mtr8b74jjbho", name: "Womens Bathroom Sink 2" }],
   },
   "br2_communal": {
-    "emergencyLighting": [{ id: "emergencyLighting_mta5jdsn9rr1", name: "PF Kitchen 1" }, { id: "emergencyLighting_mta5jgh4zdxc", name: "PF Kitchen 2" }, { id: "emergencyLighting_mta5k23o3ht5", name: "Meeting Room 1" }, { id: "emergencyLighting_mta5k5ktx3ef", name: "Meeting Room 2" }, { id: "emergencyLighting_mta5k8ixql6b", name: "Meeting Room 3" }, { id: "emergencyLighting_mta5kktetwwh", name: "Upstairs Toilet 1" }, { id: "emergencyLighting_mta5ko0c8ikw", name: "Upstairs Toilet 2" }, { id: "emergencyLighting_mta5kskhypeg", name: "Entrance Toilet" }, { id: "emergencyLighting_mta5l52scdc7", name: "Stairwell Entrance" }, { id: "emergencyLighting_mta5lbxagdvz", name: "Rear Stairwell" }, { id: "emergencyLighting_mta5le5mvuwm", name: "Fish Tank" }, { id: "emergencyLighting_mta5lr3ubcy2", name: "PF Office Main 1" }, { id: "emergencyLighting_mta5lttwfojk", name: "PF Office Main 2" }, { id: "emergencyLighting_muaxuxyaght0", name: "Handyman Cupboard" }],
-    "fireExtinguishers": [{ id: "fireExtinguishers_mta5pf72vs7k", name: "BR2 Reception", extType: "co2" }, { id: "fireExtinguishers_mta5phwpu3uy", name: "BR2 Reception", extType: "foam" }, { id: "fireExtinguishers_mta5pt1boaxb", name: "PF Kitchen", extType: "foam" }, { id: "fireExtinguishers_mta5pvqydywk", name: "PF Kitchen", extType: "co2" }, { id: "fireExtinguishers_mta5q0t57wb1", name: "PF Office", extType: "co2" }, { id: "fireExtinguishers_mta5q32wxs95", name: "PF Office", extType: "foam" }],
+    "emergencyLighting": [{ id: "emergencyLighting_mta5jdsn9rr1", name: "PF Kitchen 1" }, { id: "emergencyLighting_mta5jgh4zdxc", name: "PF Kitchen 2" }, { id: "emergencyLighting_mta5k23o3ht5", name: "Meeting Room 1" }, { id: "emergencyLighting_mta5k5ktx3ef", name: "Meeting Room 2" }, { id: "emergencyLighting_mta5k8ixql6b", name: "Meeting Room 3" }, { id: "emergencyLighting_mta5kktetwwh", name: "Upstairs Toilet 1" }, { id: "emergencyLighting_mta5ko0c8ikw", name: "Upstairs Toilet 2" }, { id: "emergencyLighting_mta5kskhypeg", name: "Entrance Toilet" }, { id: "emergencyLighting_mta5l52scdc7", name: "Stairwell Entrance" }, { id: "emergencyLighting_mta5lbxagdvz", name: "Rear Stairwell" }, { id: "emergencyLighting_mta5le5mvuwm", name: "Fish Tank" }, { id: "emergencyLighting_mta5lr3ubcy2", name: "PF Office Main 1" }, { id: "emergencyLighting_mta5lttwfojk", name: "PF Office Main 2" }, { id: "emergencyLighting_muaxuxyaght0", name: "Handyman Cupboard" }, { id: "emergencyLighting_mwmao4ztb7u2", name: "Loading Bay" }, { id: "emergencyLighting_mwmaoqwyrarb", name: "Loading Bay Toilet" }],
+    "fireExtinguishers": [{ id: "fireExtinguishers_mta5pf72vs7k", name: "BR2 Reception", extType: "co2" }, { id: "fireExtinguishers_mta5phwpu3uy", name: "BR2 Reception", extType: "foam" }, { id: "fireExtinguishers_mta5pt1boaxb", name: "PF Kitchen", extType: "foam" }, { id: "fireExtinguishers_mta5pvqydywk", name: "PF Kitchen", extType: "co2" }, { id: "fireExtinguishers_mta5q0t57wb1", name: "PF Office", extType: "co2" }, { id: "fireExtinguishers_mta5q32wxs95", name: "PF Office", extType: "foam" }, { id: "fireExtinguishers_mwma4rs5obzo", name: "Loading Bay", extType: "foam" }, { id: "fireExtinguishers_mwma4tg9uuip", name: "Loading Bay", extType: "co2" }],
     "fireDoors": [{ id: "fireDoors_mta5n77ms4oy", name: "Electrical Intake" }, { id: "fireDoors_mta5natpj7uz", name: "PF Entrance" }, { id: "fireDoors_mta5ni1ztja4", name: "PF Rear Entrance" }, { id: "fireDoors_mta5nu7zujc9", name: "BR2 Reception Entrance" }],
-    "waterTemp": [{ id: "waterTemp_mta5ojs8jo88", name: "Upstairs Toilet 1" }, { id: "waterTemp_mta5on0gfmek", name: "Upstairs Toilet 2" }, { id: "waterTemp_mta5otmplkxu", name: "Reception Toilet" }, { id: "waterTemp_mta5p1c66h2h", name: "PF Kitchen" }],
+    "waterTemp": [{ id: "waterTemp_mta5ojs8jo88", name: "Upstairs Toilet 1" }, { id: "waterTemp_mta5on0gfmek", name: "Upstairs Toilet 2" }, { id: "waterTemp_mta5otmplkxu", name: "Reception Toilet" }, { id: "waterTemp_mta5p1c66h2h", name: "PF Kitchen" }, { id: "waterTemp_mwmantgldwo9", name: "Loading Bay Toilet" }],
   },
   "b64_communal": {
     "emergencyLighting": [{ id: "emergencyLighting_mta59yjdb9lj", name: "Staff Room 1" }, { id: "emergencyLighting_mta5a2v7yxbp", name: "Staff Room 2" }, { id: "emergencyLighting_mta5a4z323j8", name: "Kitchen" }, { id: "emergencyLighting_mta5a7f0khk9", name: "Coms Room" }, { id: "emergencyLighting_mta5afo74ieg", name: "Office Entrance 1" }, { id: "emergencyLighting_mta5aj9yb78u", name: "Office Entrance 2" }, { id: "emergencyLighting_mta5ameie6xm", name: "Digi Office" }, { id: "emergencyLighting_mta5au4isi7m", name: "Main Office 1" }, { id: "emergencyLighting_mta5awttlo67", name: "Main Office 2" }, { id: "emergencyLighting_mta5azkg4h2j", name: "Main Office 3" }, { id: "emergencyLighting_mta5b26df3is", name: "Main Office 4" }, { id: "emergencyLighting_mta5b8ygekeh", name: "Intake Room" }, { id: "emergencyLighting_mta5bcj3q51e", name: "Stairwell 1" }, { id: "emergencyLighting_mta5bewb1lvc", name: "Stairwell 2" }, { id: "emergencyLighting_mta5bi1mprjy", name: "Fire Exit Main" }, { id: "emergencyLighting_mta5chml402r", name: "Warehouse Right Hand Side" }, { id: "emergencyLighting_mta5cnk6e8nm", name: "Warehouse Left Hand Side" }, { id: "emergencyLighting_mta5cse6y87e", name: "Lighting Desk" }, { id: "emergencyLighting_mta5d03c6utt", name: "Fire Exit Warehouse" }, { id: "emergencyLighting_mta5d6sh1zi5", name: "Fire Exit Set" }, { id: "emergencyLighting_mvf9lgcdqaro", name: "Electrical Cupboard" }],
@@ -2258,6 +2263,12 @@ function renderWaterItem(spaceId, typeId, cp) {
 }
 
 function render() {
+  renderDeferred_ = false;
+  renderInner_();
+  requestAnimationFrame(sizeAllNotes_);
+}
+
+function renderInner_() {
   if (currentView === "checklist") {
     renderPickers();
     renderMain();
@@ -2382,7 +2393,7 @@ async function loadMaintenanceList() {
     maintenanceItems = [];
     checkLogItems = [];
   }
-  render();
+  renderSoon_();
 }
 
 // Used for background/periodic refreshes — keeps whatever's already
@@ -2396,7 +2407,7 @@ async function silentRefreshMaintenanceList() {
     maintenanceItems = parsed.maintenance;
     checkLogItems = parsed.checkLog;
     maintenanceError = false;
-    render();
+    renderSoon_();
     return true;
   } catch (e) {
     // silent: keep whatever's already cached rather than showing an error
@@ -2807,6 +2818,7 @@ function renderMaintenanceItem(it) {
   let noteTimer = null;
   noteInput.oninput = (e) => {
     const value = e.target.value;
+    it["Action Note"] = value;
     clearTimeout(noteTimer);
     noteTimer = setTimeout(() => pushMaintenanceAction({ action: "updateNote", id: it.ID, note: value }), 500);
   };
@@ -3722,6 +3734,94 @@ document.getElementById("resetBtn").onclick = async () => {
     showToast(space.name + " data reset");
   }
 };
+
+/* ======================================================================
+   TYPING COMFORT
+   - Background refreshes never redraw the page while a box is focused.
+   - Note boxes grow with their text so nothing is cut off.
+   - What is being typed is always kept in view above the keyboard.
+   ====================================================================== */
+let renderDeferred_ = false;
+const NOTE_BOX_SELECTOR_ = "textarea.notes, textarea.temp-notes, textarea.actioned, textarea.maint-note";
+
+function isTextField_(el) {
+  if (!el) return false;
+  if (el.tagName === "TEXTAREA") return true;
+  return el.tagName === "INPUT" && !/^(checkbox|radio|button|submit|range|file)$/.test(el.type);
+}
+function typingInMain_() {
+  const a = document.activeElement, main = document.getElementById("main");
+  return !!(a && main && main.contains(a) && isTextField_(a));
+}
+// For refreshes nobody asked for: wait until the person has finished typing.
+function renderSoon_() {
+  if (typingInMain_()) { renderDeferred_ = true; return; }
+  renderKeepingScroll_();
+}
+function renderKeepingScroll_() {
+  const y = window.scrollY;
+  render();
+  if (Math.abs(window.scrollY - y) > 1) window.scrollTo(0, y);
+}
+
+function autoGrow_(ta) {
+  if (!ta || !ta.scrollHeight) return;           // hidden or not laid out yet
+  const vv = window.visualViewport;
+  const maxH = Math.round((vv ? vv.height : window.innerHeight) * 0.5);
+  const y = window.scrollY;
+  ta.style.height = "auto";
+  const want = ta.scrollHeight + (ta.offsetHeight - ta.clientHeight);
+  ta.style.height = Math.min(want, maxH) + "px";
+  ta.style.overflowY = want > maxH ? "auto" : "hidden";
+  if (Math.abs(window.scrollY - y) > 1) window.scrollTo(0, y);
+}
+function sizeAllNotes_() {
+  document.querySelectorAll(NOTE_BOX_SELECTOR_).forEach(autoGrow_);
+}
+
+// Nudges the page just enough that the box is fully clear of the header and
+// the keyboard. Does nothing if it is already in view.
+function ensureVisible_(el) {
+  if (!el || !el.getBoundingClientRect) return;
+  const vv = window.visualViewport;
+  const offTop = vv ? vv.offsetTop : 0;
+  const viewH = vv ? vv.height : window.innerHeight;
+  const hdr = document.querySelector("header");
+  const visTop = Math.max(hdr ? hdr.getBoundingClientRect().bottom : 0, offTop) + 8;
+  const visBottom = offTop + viewH - 12;
+  const r = el.getBoundingClientRect();
+  let dy = 0;
+  if (r.bottom > visBottom) dy = r.bottom - visBottom;
+  if (r.top - dy < visTop) dy = r.top - visTop;
+  if (Math.abs(dy) > 1) window.scrollBy(0, dy);
+}
+
+document.addEventListener("input", (e) => {
+  if (e.target.matches && e.target.matches(NOTE_BOX_SELECTOR_)) {
+    autoGrow_(e.target);
+    ensureVisible_(e.target);
+  }
+});
+document.addEventListener("focusin", (e) => {
+  const el = e.target;
+  if (!isTextField_(el)) return;
+  document.body.classList.add("typing");
+  // Wait for the keyboard to finish sliding up, then make sure the box is clear of it.
+  setTimeout(() => { if (document.activeElement === el) ensureVisible_(el); }, 350);
+  setTimeout(() => { if (document.activeElement === el) ensureVisible_(el); }, 800);
+});
+document.addEventListener("focusout", () => {
+  setTimeout(() => {
+    document.body.classList.toggle("typing", isTextField_(document.activeElement));
+    if (renderDeferred_ && !typingInMain_()) renderKeepingScroll_();
+  }, 150);
+});
+if (window.visualViewport) {
+  window.visualViewport.addEventListener("resize", () => {
+    const a = document.activeElement;
+    if (isTextField_(a)) setTimeout(() => ensureVisible_(a), 60);
+  });
+}
 
 /* ======================================================================
    INIT

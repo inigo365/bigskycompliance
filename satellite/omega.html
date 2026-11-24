@@ -465,6 +465,11 @@
     -webkit-transform:translate3d(0,0,0);
     will-change:transform;
   }
+  /* Typing comfort: note boxes grow with their text (no inner scrolling or
+     cut-off), and the fixed footer steps aside while a field is focused so it
+     can never sit over what is being typed. */
+  .notes,.temp-notes,.actioned,.maint-note{resize:none;overflow-y:hidden;scroll-margin-top:120px;scroll-margin-bottom:24px;}
+  body.typing footer{display:none !important;}
   .pdf-btn{
     width:100%;
     max-width:680px;
@@ -939,7 +944,7 @@ const BIGSKY_LOGO_ASPECT = 700 / 142; // width / height of the source PNG
    ====================================================================== */
 /* App version, shown top right in the header so it is obvious which copy is
    running. Bump this every time index.html is changed. */
-const APP_VERSION = "v2.6";
+const APP_VERSION = "v2.9";
 const APP_VERSION_DATE = "29 Oct 2026";
 
 /* This file is the MAIN app. The satellite pages (satellite/*.html) are generated
@@ -2119,6 +2124,12 @@ function renderWaterItem(spaceId, typeId, cp) {
 }
 
 function render() {
+  renderDeferred_ = false;
+  renderInner_();
+  requestAnimationFrame(sizeAllNotes_);
+}
+
+function renderInner_() {
   if (currentView === "checklist") {
     renderPickers();
     renderMain();
@@ -2243,7 +2254,7 @@ async function loadMaintenanceList() {
     maintenanceItems = [];
     checkLogItems = [];
   }
-  render();
+  renderSoon_();
 }
 
 // Used for background/periodic refreshes — keeps whatever's already
@@ -2257,7 +2268,7 @@ async function silentRefreshMaintenanceList() {
     maintenanceItems = parsed.maintenance;
     checkLogItems = parsed.checkLog;
     maintenanceError = false;
-    render();
+    renderSoon_();
     return true;
   } catch (e) {
     // silent: keep whatever's already cached rather than showing an error
@@ -2668,6 +2679,7 @@ function renderMaintenanceItem(it) {
   let noteTimer = null;
   noteInput.oninput = (e) => {
     const value = e.target.value;
+    it["Action Note"] = value;
     clearTimeout(noteTimer);
     noteTimer = setTimeout(() => pushMaintenanceAction({ action: "updateNote", id: it.ID, note: value }), 500);
   };
@@ -3578,6 +3590,94 @@ document.getElementById("resetBtn").onclick = async () => {
     showToast(space.name + " data reset");
   }
 };
+
+/* ======================================================================
+   TYPING COMFORT
+   - Background refreshes never redraw the page while a box is focused.
+   - Note boxes grow with their text so nothing is cut off.
+   - What is being typed is always kept in view above the keyboard.
+   ====================================================================== */
+let renderDeferred_ = false;
+const NOTE_BOX_SELECTOR_ = "textarea.notes, textarea.temp-notes, textarea.actioned, textarea.maint-note";
+
+function isTextField_(el) {
+  if (!el) return false;
+  if (el.tagName === "TEXTAREA") return true;
+  return el.tagName === "INPUT" && !/^(checkbox|radio|button|submit|range|file)$/.test(el.type);
+}
+function typingInMain_() {
+  const a = document.activeElement, main = document.getElementById("main");
+  return !!(a && main && main.contains(a) && isTextField_(a));
+}
+// For refreshes nobody asked for: wait until the person has finished typing.
+function renderSoon_() {
+  if (typingInMain_()) { renderDeferred_ = true; return; }
+  renderKeepingScroll_();
+}
+function renderKeepingScroll_() {
+  const y = window.scrollY;
+  render();
+  if (Math.abs(window.scrollY - y) > 1) window.scrollTo(0, y);
+}
+
+function autoGrow_(ta) {
+  if (!ta || !ta.scrollHeight) return;           // hidden or not laid out yet
+  const vv = window.visualViewport;
+  const maxH = Math.round((vv ? vv.height : window.innerHeight) * 0.5);
+  const y = window.scrollY;
+  ta.style.height = "auto";
+  const want = ta.scrollHeight + (ta.offsetHeight - ta.clientHeight);
+  ta.style.height = Math.min(want, maxH) + "px";
+  ta.style.overflowY = want > maxH ? "auto" : "hidden";
+  if (Math.abs(window.scrollY - y) > 1) window.scrollTo(0, y);
+}
+function sizeAllNotes_() {
+  document.querySelectorAll(NOTE_BOX_SELECTOR_).forEach(autoGrow_);
+}
+
+// Nudges the page just enough that the box is fully clear of the header and
+// the keyboard. Does nothing if it is already in view.
+function ensureVisible_(el) {
+  if (!el || !el.getBoundingClientRect) return;
+  const vv = window.visualViewport;
+  const offTop = vv ? vv.offsetTop : 0;
+  const viewH = vv ? vv.height : window.innerHeight;
+  const hdr = document.querySelector("header");
+  const visTop = Math.max(hdr ? hdr.getBoundingClientRect().bottom : 0, offTop) + 8;
+  const visBottom = offTop + viewH - 12;
+  const r = el.getBoundingClientRect();
+  let dy = 0;
+  if (r.bottom > visBottom) dy = r.bottom - visBottom;
+  if (r.top - dy < visTop) dy = r.top - visTop;
+  if (Math.abs(dy) > 1) window.scrollBy(0, dy);
+}
+
+document.addEventListener("input", (e) => {
+  if (e.target.matches && e.target.matches(NOTE_BOX_SELECTOR_)) {
+    autoGrow_(e.target);
+    ensureVisible_(e.target);
+  }
+});
+document.addEventListener("focusin", (e) => {
+  const el = e.target;
+  if (!isTextField_(el)) return;
+  document.body.classList.add("typing");
+  // Wait for the keyboard to finish sliding up, then make sure the box is clear of it.
+  setTimeout(() => { if (document.activeElement === el) ensureVisible_(el); }, 350);
+  setTimeout(() => { if (document.activeElement === el) ensureVisible_(el); }, 800);
+});
+document.addEventListener("focusout", () => {
+  setTimeout(() => {
+    document.body.classList.toggle("typing", isTextField_(document.activeElement));
+    if (renderDeferred_ && !typingInMain_()) renderKeepingScroll_();
+  }, 150);
+});
+if (window.visualViewport) {
+  window.visualViewport.addEventListener("resize", () => {
+    const a = document.activeElement;
+    if (isTextField_(a)) setTimeout(() => ensureVisible_(a), 60);
+  });
+}
 
 /* ======================================================================
    INIT
