@@ -469,6 +469,60 @@
      can never sit over what is being typed. */
   .notes,.temp-notes,.actioned,.maint-note{resize:none;overflow-y:hidden;scroll-margin-top:120px;scroll-margin-bottom:24px;}
   body.typing footer{display:none !important;}
+
+  /* Help: header button, ? dots, and the help sheet */
+  header .help-btn{
+    font:inherit;font-size:11.5px;font-weight:700;color:#fff;background:rgba(255,255,255,0.12);
+    border:1px solid rgba(255,255,255,0.35);border-radius:999px;padding:4px 12px;
+    cursor:pointer;line-height:1.2;white-space:nowrap;
+  }
+  .help-dot{
+    position:relative;flex:0 0 auto;width:18px;height:18px;border-radius:50%;
+    border:1.5px solid var(--accent);background:#fff;color:var(--accent);
+    font:700 11px/1 inherit;font-family:inherit;padding:0;margin-left:6px;cursor:pointer;
+    display:inline-flex;align-items:center;justify-content:center;vertical-align:middle;
+  }
+  .help-dot::after{content:"";position:absolute;inset:-9px;}
+  .maint-toolbar .help-dot{margin-left:auto;}
+  .sat-intro .help-dot{margin-left:8px;}
+  .edit-banner .help-dot{margin-left:8px;}
+  .actioned-label-row{display:flex;align-items:center;gap:4px;margin-bottom:4px;}
+  .actioned-label-row .actioned-label{margin-bottom:0;}
+  .modal-box h3 .help-dot{margin-left:8px;}
+  .help-overlay{z-index:70;}
+  .help-box{max-width:430px;max-height:calc(100vh - 40px);display:flex;flex-direction:column;padding:0;overflow:hidden;}
+  .help-head{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:16px 18px 8px;}
+  .help-head h3{margin:0;}
+  .help-x{background:none;border:none;font-size:18px;color:var(--muted);padding:4px 6px;cursor:pointer;}
+  .help-tabs{display:flex;gap:6px;padding:4px 18px 12px;border-bottom:1px solid var(--line);}
+  .help-tab{
+    flex:1;font:inherit;font-size:12px;font-weight:700;padding:9px 6px;border-radius:9px;
+    border:1px solid var(--line);background:#fff;color:var(--muted);cursor:pointer;
+  }
+  .help-tab.active{background:var(--accent);border-color:var(--accent);color:#fff;}
+  .help-body{overflow-y:auto;-webkit-overflow-scrolling:touch;padding:14px 18px 6px;font-size:13.5px;line-height:1.5;color:var(--ink);flex:1 1 auto;min-height:120px;}
+  .help-box .help-body p{white-space:normal;color:var(--ink);margin:0 0 10px;font-size:13.5px;}
+  .help-box .help-body p.help-note{margin:4px 0 10px;}
+  .help-body h4{margin:14px 0 6px;font-size:13px;color:var(--accent);text-transform:uppercase;letter-spacing:.04em;}
+  .help-body h4:first-child{margin-top:0;}
+  .help-body ul,.help-body ol{margin:0 0 10px;padding-left:20px;}
+  .help-body li{margin-bottom:6px;}
+  .help-steps{list-style:none;padding:0;counter-reset:hs;}
+  .help-steps li{counter-increment:hs;position:relative;padding-left:34px;margin-bottom:12px;min-height:24px;}
+  .help-steps li::before{
+    content:counter(hs);position:absolute;left:0;top:0;width:24px;height:24px;border-radius:50%;
+    background:var(--accent-soft);color:var(--accent);font-weight:700;font-size:12px;
+    display:flex;align-items:center;justify-content:center;
+  }
+  .help-note{background:var(--accent-soft);border-radius:10px;padding:10px 12px;font-size:12.5px;margin:0 0 10px;color:var(--ink);}
+  .help-tag-row{padding:11px 0;border-top:1px solid var(--line);}
+  .help-tag-row:first-of-type{border-top:none;padding-top:0;}
+  .help-tag-left{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-bottom:6px;}
+  .help-tag-right{font-size:13px;color:var(--ink);}
+  .help-foot{display:flex;gap:8px;padding:12px 18px 16px;border-top:1px solid var(--line);}
+  .help-foot .modal-btn{flex:1;text-align:center;text-decoration:none;display:flex;align-items:center;justify-content:center;}
+  .help-foot .modal-btn[hidden]{display:none;}
+  .help-foot .modal-btn.confirm{background:var(--accent);border-color:var(--accent);color:#fff;}
   .pdf-btn{
     width:100%;
     max-width:680px;
@@ -806,7 +860,7 @@
     </div>
     <div class="brand-right">
       <span class="app-version" id="appVersion"></span>
-      <a class="help-link" href="./instructions.html">How to use</a>
+      <button class="help-btn" id="helpBtn" type="button">? Help</button>
     </div>
   </div>
   <div class="savebar" id="saveBar">All changes saved on this device</div>
@@ -841,6 +895,7 @@
     <div class="maint-toolbar">
       <button class="maint-toolbar-btn" id="maintRefreshBtn">Refresh</button>
       <a class="maint-toolbar-btn maint-sheet-link" id="maintSheetLink" href="#" target="_blank" rel="noopener">Open Sheet</a>
+      <button class="help-dot" type="button" data-help="maintList" aria-label="Help with the Maintenance List">?</button>
     </div>
     <button class="edit-toggle" id="summaryBtn">Monthly summary email</button>
   </div>
@@ -871,7 +926,7 @@
 
 <div class="modal-overlay" id="pdfSelectOverlay">
   <div class="modal-box">
-    <h3>Generate PDFs</h3>
+    <h3>Generate PDFs <button class="help-dot" type="button" data-help="pdf" aria-label="What happens when I generate PDFs?">?</button></h3>
     <p>Choose which compliance types to include for <strong id="pdfSelectSpaceName"></strong>. Only pick the ones you've actually gone through this visit.</p>
     <div class="pdf-type-checks" id="pdfTypeChecks"></div>
     <div class="modal-actions">
@@ -883,7 +938,7 @@
 
 <div class="modal-overlay" id="summaryOverlay">
   <div class="modal-box summary-box">
-    <h3>Monthly summary email</h3>
+    <h3>Monthly summary email <button class="help-dot" type="button" data-help="summary" aria-label="How does the summary email work?">?</button></h3>
     <p class="summary-hint" id="summaryHint" style="display:none;">Generate your PDFs first, then attach them to the email before you send it.</p>
     <div class="summary-controls">
       <label for="summaryMonth">Month</label>
@@ -927,6 +982,23 @@
   </div>
 </div>
 
+<div class="modal-overlay help-overlay" id="helpOverlay">
+  <div class="modal-box help-box">
+    <div class="help-head"><h3 id="helpTitle">Help</h3><button class="help-x" id="helpClose" type="button" aria-label="Close">&#10005;</button></div>
+    <div class="help-tabs" id="helpTabs">
+      <button class="help-tab" type="button" data-tab="screen">This screen</button>
+      <button class="help-tab" type="button" data-tab="quick">Quick start</button>
+      <button class="help-tab" type="button" data-tab="tags">Tags</button>
+    </div>
+    <div class="help-body" id="helpBody"></div>
+    <div class="help-foot">
+      <a class="modal-btn cancel" id="helpGuideBtn" href="#" target="_blank" rel="noopener">Full guide</a>
+      <button class="modal-btn cancel" id="helpMore" type="button" hidden>All help</button>
+      <button class="modal-btn confirm" id="helpDone" type="button">Got it</button>
+    </div>
+  </div>
+</div>
+
 <script>
 /* ======================================================================
    BRAND ASSETS
@@ -942,7 +1014,7 @@ const BIGSKY_LOGO_ASPECT = 700 / 142; // width / height of the source PNG
    ====================================================================== */
 /* App version, shown top right in the header so it is obvious which copy is
    running. Bump this every time index.html is changed. */
-const APP_VERSION = "v2.12";
+const APP_VERSION = "v2.14";
 const APP_VERSION_DATE = "24 Nov 2026";
 
 /* This file is the MAIN app. The satellite pages (satellite/*.html) are generated
@@ -1240,7 +1312,7 @@ function addCheckpoint(spaceId, typeId, name, extType) {
   if (!state.items[spaceId][typeId]) state.items[spaceId][typeId] = {};
   state.items[spaceId][typeId][cp.id] = type.kind === "passfail"
     ? { status: "pass", notes: "", actioned: "", fixed: false }
-    : { hot: "", cold: "", notes: "", actioned: "", fixed: false, flush: true };
+    : { status: "pass", hot: "", cold: "", notes: "", actioned: "", fixed: false, flush: true };
   saveState();
 }
 
@@ -1338,7 +1410,7 @@ function defaultState() {
         if (t.kind === "passfail") {
           state.items[spaceId][t.id][cp.id] = { status: "pass", notes: "", actioned: "", fixed: false };
         } else {
-          state.items[spaceId][t.id][cp.id] = { hot: "", cold: "", notes: "", actioned: "", fixed: false, flush: true };
+          state.items[spaceId][t.id][cp.id] = { status: "pass", hot: "", cold: "", notes: "", actioned: "", fixed: false, flush: true };
         }
       });
     });
@@ -1354,7 +1426,7 @@ function defaultItemsForSpace(spaceId) {
       if (t.kind === "passfail") {
         items[t.id][cp.id] = { status: "pass", notes: "", actioned: "", fixed: false };
       } else {
-        items[t.id][cp.id] = { hot: "", cold: "", notes: "", actioned: "", fixed: false, flush: true };
+        items[t.id][cp.id] = { status: "pass", hot: "", cold: "", notes: "", actioned: "", fixed: false, flush: true };
       }
     });
   });
@@ -1372,6 +1444,21 @@ function loadState() {
         Object.keys(fresh.items[spaceId][typeId]).forEach(cpId => {
           if (parsed.items && parsed.items[spaceId] && parsed.items[spaceId][typeId] && parsed.items[spaceId][typeId][cpId]) {
             fresh.items[spaceId][typeId][cpId] = parsed.items[spaceId][typeId][cpId];
+          }
+        });
+      });
+    });
+    // Water items saved before Pass/Fail existed have no status. They were
+    // flagged by having a note, so a note becomes a Fail and nothing silently
+    // drops off the Maintenance List; no note means Pass.
+    COMPLIANCE_TYPES.forEach(t => {
+      if (t.kind !== "water") return;
+      Object.keys(fresh.items).forEach(spaceId => {
+        const group = (fresh.items[spaceId] || {})[t.id] || {};
+        Object.keys(group).forEach(cpId => {
+          const d = group[cpId];
+          if (d.status !== "pass" && d.status !== "fail") {
+            d.status = (d.notes && String(d.notes).trim()) ? "fail" : "pass";
           }
         });
       });
@@ -1497,10 +1584,10 @@ function renderPickers() {
 /* ======================================================================
    MAIN RENDER — all four compliance types stacked for the chosen space
    ====================================================================== */
-// Pass/fail items are flagged only when marked Fail (leftover note text on a
-// Pass doesn't count); water items have no Fail button, so a note flags them.
+// Items are flagged only when marked Fail (leftover note text on a Pass
+// doesn't count). Water items have Pass/Fail buttons too.
 function isLocallyFlagged_(type, data) {
-  return type.kind === "passfail" ? data.status === "fail" : !!(data.notes && data.notes.trim());
+  return data.status === "fail";
 }
 
 // Flagged and not yet sorted: what the red dots and "Needs attention" mean.
@@ -1538,12 +1625,14 @@ function renderMain() {
       <span class="status-pill ${issue ? "attention" : "ok"}">${issue ? "Needs attention" : "All clear"}</span>
       ${lastCheckedTagHTML(getLastCheckedSummary(space))}
     </div>`;
+  banner.querySelector(".space-status-col").appendChild(helpDotEl_("status"));
   main.appendChild(banner);
 
   if (editMode) {
     const editBanner = document.createElement("div");
     editBanner.className = "edit-banner";
     editBanner.textContent = "Edit mode — tap + to add, the pencil to rename, \u2715 to remove. Press and hold a row (or grab the \u22ee\u22ee handle) to drag it into a new order. No results are recorded while this is on.";
+    editBanner.appendChild(helpDotEl_("edit"));
     main.appendChild(editBanner);
   }
 
@@ -1572,11 +1661,12 @@ function renderMain() {
     const h3 = document.createElement("h3");
     h3.textContent = t.label;
     left.appendChild(h3);
+    left.appendChild(helpDotEl_(t.id));
     head.appendChild(left);
 
     const right = document.createElement("div");
     right.className = "section-head-right";
-    if (!editMode && t.kind === "passfail" && cps.length && isOpen) {
+    if (!editMode && cps.length && isOpen) {
       const btn = document.createElement("button");
       btn.className = "mark-all";
       btn.textContent = "Mark all pass";
@@ -2038,7 +2128,11 @@ function buildActionedBox_(data, cp) {
   const label = document.createElement("div");
   label.className = "actioned-label";
   label.textContent = "Action taken (also goes on the Maintenance List)";
-  wrap.appendChild(label);
+  const labelRow = document.createElement("div");
+  labelRow.className = "actioned-label-row";
+  labelRow.appendChild(label);
+  labelRow.appendChild(helpDotEl_("actionTaken"));
+  wrap.appendChild(labelRow);
   const box = document.createElement("textarea");
   box.className = "actioned";
   box.placeholder = "What's been done about it? e.g. reported to facilities, tag replaced";
@@ -2093,20 +2187,10 @@ function buildMaintBadge(cp) {
   return badge;
 }
 
-function renderPassFailItem(spaceId, typeId, cp) {
-  const data = state.items[spaceId][typeId][cp.id];
-  const item = document.createElement("div");
-  item.className = "item";
-
-  const top = document.createElement("div");
-  top.className = "item-top";
-
-  const name = document.createElement("div");
-  name.className = "item-name";
-  appendExtTag(name, cp);
-  name.appendChild(document.createTextNode(cp.name));
-  top.appendChild(name);
-
+// The Pass / Fail buttons, shared by pass-fail items and water items so the two
+// behave identically (Fail prefills from the open Maintenance List entry,
+// Pass clears the failure text).
+function buildPassFailToggle_(data, cp) {
   const toggle = document.createElement("div");
   toggle.className = "toggle";
   const passBtn = document.createElement("button");
@@ -2158,7 +2242,24 @@ function renderPassFailItem(spaceId, typeId, cp) {
   };
   toggle.appendChild(passBtn);
   toggle.appendChild(failBtn);
-  top.appendChild(toggle);
+  return toggle;
+}
+
+function renderPassFailItem(spaceId, typeId, cp) {
+  const data = state.items[spaceId][typeId][cp.id];
+  const item = document.createElement("div");
+  item.className = "item";
+
+  const top = document.createElement("div");
+  top.className = "item-top";
+
+  const name = document.createElement("div");
+  name.className = "item-name";
+  appendExtTag(name, cp);
+  name.appendChild(document.createTextNode(cp.name));
+  top.appendChild(name);
+
+  top.appendChild(buildPassFailToggle_(data, cp));
 
   item.appendChild(top);
 
@@ -2183,10 +2284,14 @@ function renderWaterItem(spaceId, typeId, cp) {
   const item = document.createElement("div");
   item.className = "item";
 
+  const top = document.createElement("div");
+  top.className = "item-top";
   const name = document.createElement("div");
   name.className = "item-name";
   name.textContent = cp.name;
-  item.appendChild(name);
+  top.appendChild(name);
+  top.appendChild(buildPassFailToggle_(data, cp));
+  item.appendChild(top);
 
   const badge = buildMaintBadge(cp);
   if (badge) item.appendChild(badge);
@@ -2232,32 +2337,18 @@ function renderWaterItem(spaceId, typeId, cp) {
   flushRow.appendChild(flushLabel);
   item.appendChild(flushRow);
 
-  // Water items have no Fail button: a note is what flags one, so the Action
-  // taken box appears as soon as there is a note.
-  const actionedWrap = buildActionedBox_(data, cp);
-  actionedWrap.style.display = (data.notes && data.notes.trim()) ? "" : "none";
-
-  const notes = document.createElement("textarea");
-  notes.className = "temp-notes";
-  notes.placeholder = "Notes (optional)";
-  notes.value = data.notes || "";
-  notes.oninput = (e) => {
-    data.notes = e.target.value;
-    scheduleSave();
-    actionedWrap.style.display = data.notes.trim() ? "" : "none";
-    if (!data.notes.trim() && (data.actioned || data.fixed)) {
-      data.actioned = "";
-      data.fixed = false;
-      actionedWrap.querySelector("textarea").value = "";
-      actionedWrap.refresh();
-    }
-    if (!data.notes.trim() && pushedMaintenance[cp.id]) {
-      delete pushedMaintenance[cp.id];
-      savePushed();
-    }
-  };
-  item.appendChild(notes);
-  item.appendChild(actionedWrap);
+  // Same as every other check: a Fail opens the note and the Action taken box
+  // (with "Fixed on the spot"), so a low reading can be recorded along with
+  // what was done about it.
+  if (data.status === "fail") {
+    const notes = document.createElement("textarea");
+    notes.className = "notes";
+    notes.placeholder = "What's wrong? e.g. hot only reached 48 C";
+    notes.value = data.notes || "";
+    notes.oninput = (e) => { data.notes = e.target.value; scheduleSave(); };
+    item.appendChild(notes);
+    item.appendChild(buildActionedBox_(data, cp));
+  }
 
   return item;
 }
@@ -2319,6 +2410,7 @@ function renderSatellitePages() {
   const intro = document.createElement("div");
   intro.className = "sat-intro";
   intro.textContent = "Each satellite site has its own page. Send each manager only their own link.";
+  intro.appendChild(helpDotEl_("sats"));
   main.appendChild(intro);
   SATELLITE_SITES.forEach(s => {
     const card = document.createElement("div");
@@ -2568,9 +2660,7 @@ async function syncFlaggedItemsForSpace(space, types) {
     const cps = CHECKPOINTS[space.id][type.id];
     cps.forEach(cp => {
       const data = state.items[space.id][type.id][cp.id];
-      const flagged = type.kind === "passfail"
-        ? data.status === "fail"
-        : !!(data.notes && data.notes.trim());
+      const flagged = isLocallyFlagged_(type, data);
       if (!flagged) return;
 
       // Never add the same open issue twice — two independent guards:
@@ -2608,7 +2698,7 @@ async function syncFlaggedItemsForSpace(space, types) {
 
       const issue = (data.notes && data.notes.trim())
         ? data.notes.trim()
-        : (type.kind === "passfail" ? "Marked Fail (no note added)" : "");
+        : "Marked Fail (no note added)";
       // For extinguishers, put the type in brackets after the location so
       // the maintenance list reads e.g. "M&S Stairwell (CO2)" — otherwise
       // two extinguishers at the same spot are indistinguishable there.
@@ -2726,7 +2816,7 @@ function buildSyncJob_(space, selectedTypes) {
         checkpointId: cp.id,
         checkpoint: ext ? cp.name + " (" + ext.label + ")" : cp.name,
         complianceType: type.id,
-        issue: typedIssue || (type.kind === "passfail" ? "Marked Fail (no note added)" : ""),
+        issue: typedIssue || "Marked Fail (no note added)",
         weakIssue: !typedIssue,
         actionNote: String(data.actioned || "").trim(),
         fixed: !!data.fixed,
@@ -3626,21 +3716,21 @@ async function generateSpacePDFs() {
         }
         return [cp.name, result, pdfNoteForPassFail_(data), pdfActionedFor_(type, data)];
       }
-      return [cp.name, data.hot ? data.hot + " C" : "—", data.cold ? data.cold + " C" : "—", data.flush !== false ? "Yes" : "No", data.notes || "", pdfActionedFor_(type, data)];
+      return [cp.name, data.status === "fail" ? "FAIL" : "Pass", data.hot ? data.hot + " C" : "—", data.cold ? data.cold + " C" : "—", data.flush !== false ? "Yes" : "No", pdfNoteForPassFail_(data), pdfActionedFor_(type, data)];
     });
 
     const head = isExtinguisher
       ? [["Type", "Checkpoint", "Result", "Notes", "Actioned"]]
       : type.kind === "passfail"
         ? [["Checkpoint", "Result", "Notes", "Actioned"]]
-        : [["Checkpoint", "Hot", "Cold", "Flushed", "Notes", "Actioned"]];
+        : [["Checkpoint", "Result", "Hot", "Cold", "Flushed", "Notes", "Actioned"]];
     const failColIndex = isExtinguisher ? 2 : 1;
     // Narrow fixed columns, so Notes and Actioned share the rest and wrap.
     const columnStyles = isExtinguisher
       ? { 0: { cellWidth: 52 }, 1: { cellWidth: 105 }, 2: { cellWidth: 46 } }
       : type.kind === "passfail"
         ? { 0: { cellWidth: 130 }, 1: { cellWidth: 46 } }
-        : { 0: { cellWidth: 95 }, 1: { cellWidth: 40 }, 2: { cellWidth: 40 }, 3: { cellWidth: 46 } };
+        : { 0: { cellWidth: 76 }, 1: { cellWidth: 38 }, 2: { cellWidth: 36 }, 3: { cellWidth: 36 }, 4: { cellWidth: 50 } };
 
     doc.autoTable({
       startY: 88,
@@ -3651,7 +3741,7 @@ async function generateSpacePDFs() {
       headStyles: { fillColor: [20, 22, 24] },
       columnStyles: columnStyles,
       didParseCell: function (data) {
-        if (type.kind === "passfail" && data.column.index === failColIndex && data.cell.raw === "FAIL") {
+        if (data.section === "body" && data.column.index === failColIndex && data.cell.raw === "FAIL") {
           data.cell.styles.textColor = [196, 69, 58];
           data.cell.styles.fontStyle = "bold";
         }
@@ -3980,6 +4070,234 @@ if (window.visualViewport) {
 }
 
 /* ======================================================================
+   HELP
+   A Help button in the header opens a sheet with three tabs: what this screen
+   is for, a quick start, and what the tags and colours mean. The small ? dots
+   next to sections open a short explanation of just that thing. The first time
+   the app is opened on a device, the quick start shows once by itself.
+   The main app and the satellite pages show different wording (see IS_SATELLITE).
+   ====================================================================== */
+const HELP_GUIDE_URL = IS_SATELLITE
+  ? "./" + APP_FILE.replace(/^.*\//, "").replace(/\.html$/, "") + "-guide.html"
+  : "./instructions.html";
+const HELP_SEEN_KEY = STORAGE_KEY.replace(/_v2$/, "") + "_helpseen_v1";
+
+function helpSite_() {
+  const s = IS_SATELLITE ? allSpacesFlat()[0] : null;
+  return s ? s.name : "your site";
+}
+function helpDotEl_(topic) {
+  const b = document.createElement("button");
+  b.type = "button";
+  b.className = "help-dot";
+  b.setAttribute("data-help", topic);
+  b.setAttribute("aria-label", "What is this?");
+  b.textContent = "?";
+  return b;
+}
+
+function helpQuickStart_() {
+  if (IS_SATELLITE) {
+    return `<h4>Your monthly checks at ${helpSite_()}</h4>
+<ol class="help-steps">
+<li><b>Type your name</b> in the box at the top. It is printed on your PDFs as &ldquo;Checked by&rdquo;.</li>
+<li><b>Go through each section.</b> Tap a section to open it, then tap <b>Pass</b> or <b>Fail</b> on every item. If you tap Fail, say what is wrong in the red box. Sections that say &ldquo;No checkpoints added yet&rdquo; are not needed, skip them.</li>
+<li><b>Tap &ldquo;Generate PDFs for this space&rdquo;</b> at the bottom. Choose the sections you checked, then save the PDFs to Files or Drive when the share sheet opens.</li>
+<li><b>Tap &ldquo;Monthly email to facilities&rdquo;</b>, then &ldquo;Copy body and open my email app&rdquo;. Paste, attach the PDFs you just saved, and send.</li>
+<li><b>That&rsquo;s it.</b> Anything you marked Fail is added to the Maintenance List for you, and facilities can see it.</li>
+</ol>
+<p class="help-note">Stuck? Tap <b>Full guide</b> below for pictures and answers, or email ${FACILITIES_EMAIL}.</p>`;
+  }
+  return `<h4>The monthly routine</h4>
+<ol class="help-steps">
+<li><b>Check a space.</b> On the Checklist tab, pick the building and space, type your name at the top, then open each section and tap <b>Pass</b> or <b>Fail</b> on every item. For water, type the hot and cold readings.</li>
+<li><b>Explain every Fail.</b> A red box opens: say what is wrong. Add what is being done in <b>Action taken</b>, or tick <b>Fixed on the spot</b> if you sorted it there and then.</li>
+<li><b>Tap &ldquo;Generate PDFs for this space&rdquo;.</b> Choose the sections you did, then save the PDFs to Drive from the share sheet.</li>
+<li><b>The Maintenance List updates by itself.</b> New fails are added, ones already there get the latest wording, and the date checked is recorded.</li>
+<li><b>Chase the open items.</b> On the Maintenance List tab, add an <b>Action note</b> (e.g. &ldquo;Engineer booked 3 Dec&rdquo;) and tap <b>Mark resolved</b> once it is properly fixed.</li>
+<li><b>At month end,</b> tap <b>Monthly summary email</b> on the Maintenance List tab, copy it into an email and attach the PDFs.</li>
+</ol>
+<p class="help-note">Tap <b>Full guide</b> below for the whole app explained step by step.</p>`;
+}
+
+function helpTagsHTML_() {
+  return `<h4>What the tags and colours mean</h4>
+<div class="help-tag-row"><div class="help-tag-left"><span class="status-pill ok">All clear</span><span class="status-pill attention">Needs attention</span></div>
+<div class="help-tag-right">Shown at the top of a space. <b>Needs attention</b> means something in it is marked Fail on your checklist, or is still open on the Maintenance List.</div></div>
+<div class="help-tag-row"><div class="help-tag-left"><span class="last-checked-tag">Last checked 12 Nov</span><span class="last-checked-tag never">Not yet checked</span></div>
+<div class="help-tag-right">The date PDFs were last generated for the space. It uses the <b>oldest</b> date across its sections, so one forgotten section shows. &ldquo;Not yet checked&rdquo; means at least one section has never been through a PDF run.</div></div>
+<div class="help-tag-row"><div class="help-tag-left"><span class="due-tag soon">Due soon</span><span class="due-tag due">Due</span><span class="due-tag urgent">Urgent</span></div>
+<div class="help-tag-right">On the Maintenance List only. <b>Due soon</b> at 3 weeks since the last check, <b>Due</b> at 1 month, <b>Urgent</b> at 2 months. Only one tag shows at a time. Generating PDFs resets it.</div></div>
+<div class="help-tag-row"><div class="help-tag-left"><span class="section-dot" style="position:static;display:inline-block;"></span></div>
+<div class="help-tag-right">A red dot beside a section name means something inside it is flagged.</div></div>
+<div class="help-tag-row"><div class="help-tag-left"><span class="maint-flag-badge" style="margin:0;">&#9888; Open on Maintenance List</span></div>
+<div class="help-tag-right">Appears under an item that is already on the Maintenance List, with the reason. It disappears when the item is marked resolved.</div></div>
+<div class="help-tag-row"><div class="help-tag-left"><span class="ext-tag" style="background:#2b2b2b;color:#fff;">CO2</span><span class="ext-tag" style="background:#e7dcc2;color:#5b4b1f;">Foam</span></div>
+<div class="help-tag-right">Extinguisher type, coloured like the real cylinders, so two extinguishers in the same spot are easy to tell apart.</div></div>
+<div class="help-tag-row"><div class="help-tag-left"><span class="maint-count">2 open</span><span class="maint-count zero">Clear</span></div>
+<div class="help-tag-right">On the Maintenance List: how many open issues a space has, or <b>Clear</b> when it has none.</div></div>`;
+}
+
+function helpScreenHTML_() {
+  const view = currentView;
+  if (IS_SATELLITE) {
+    if (view === "maintenance") {
+      return `<h4>Maintenance List</h4>
+<p>Every fault flagged at ${helpSite_()} that has not been fixed yet. Facilities can see the same list.</p>
+<ul>
+<li>Tap your site to open it. The number shows how many issues are open, or <b>Clear</b> if there are none.</li>
+<li>Each issue shows what is wrong and when it was flagged. Use <b>Action note</b> to say what is happening, e.g. &ldquo;Electrician booked Friday&rdquo;. It saves by itself.</li>
+<li>Only tap <b>Mark resolved</b> once the repair is really done.</li>
+<li><b>Refresh</b> loads the latest list.</li>
+</ul>`;
+    }
+    return `<h4>Checklist for ${helpSite_()}</h4>
+<p>This is where you do your monthly checks.</p>
+<ul>
+<li><b>Your name</b> at the top is printed on the PDFs as &ldquo;Checked by&rdquo;. Type it once.</li>
+<li><b>The sections</b> (Emergency Lighting, Fire Extinguishers and so on): tap one to open it. Tap <b>Pass</b> or <b>Fail</b> on every item. A red dot means something in it is flagged. If a section says &ldquo;No checkpoints added yet&rdquo;, you do not need it.</li>
+<li><b>Fail</b> opens a red box. Say what is wrong, and what is being done about it.</li>
+<li><b>Generate PDFs for this space</b> (bottom button) makes your paperwork and sends any fails to the Maintenance List.</li>
+<li><b>Monthly email to facilities</b> builds the email to send with your PDFs attached.</li>
+</ul>`;
+  }
+  if (view === "maintenance") {
+    return `<h4>Maintenance List</h4>
+<p>The shared list of everything that has failed and is not yet fixed, for every space. It is the same for everyone, on any device.</p>
+<ul>
+<li><b>Tap a space</b> to open it. The number is how many issues are open, or <b>Clear</b> when there are none. The tags show when it was last checked and whether it is due.</li>
+<li><b>Each issue</b> shows what is wrong and when it was flagged. Type in <b>Action note</b> what is being done (it saves by itself), and tap <b>Mark resolved</b> once it is properly fixed.</li>
+<li><b>Refresh</b> loads the latest. <b>Open Sheet</b> opens the Google Sheet behind the list.</li>
+<li><b>Monthly summary email</b> builds the end of month email for the facilities team.</li>
+</ul>
+<p class="help-note">You never have to add items by hand. They arrive when someone generates PDFs with a Fail on the checklist.</p>`;
+  }
+  if (view === "satellites") {
+    return `<h4>Satellites</h4>
+<p>Each satellite site has its own page for its manager to do their checks.</p>
+<ul>
+<li><b>Open page</b> shows you that site&rsquo;s page. <b>Copy link</b> copies the address to send to the manager. Send each manager only their own link.</li>
+<li>Whatever they flag lands on the same Maintenance List as everything else, grouped under <b>Satellite sites</b>.</li>
+<li>Each page has its own short guide for the manager.</li>
+</ul>`;
+  }
+  return `<h4>Checklist</h4>
+<p>Where the monthly checks are done, one space at a time.</p>
+<ul>
+<li><b>Your name</b> at the top is printed on the PDFs as &ldquo;Checked by&rdquo;. Type it once.</li>
+<li><b>Building and space:</b> choose where you are. The banner shows <span class="status-pill ok">All clear</span> or <span class="status-pill attention">Needs attention</span>, and when the space was last checked.</li>
+<li><b>Four sections:</b> Emergency Lighting, Fire Extinguishers, Fire Doors, Water Temperature. Tap one to open it. A red dot means something in it is flagged.</li>
+<li><b>Pass or Fail</b> on every item. Fail opens a red box for what is wrong and what has been done. <b>Mark all pass</b> saves time when everything is fine.</li>
+<li><b>Generate PDFs for this space</b> (bottom button) makes the paperwork and updates the Maintenance List.</li>
+<li><b>Edit checkpoints</b> changes what is on the list. <b>Reset</b> clears this space&rsquo;s results on this phone.</li>
+</ul>`;
+}
+
+function helpTopics_() {
+  const sat = IS_SATELLITE;
+  return {
+    status: { title: "All clear, Needs attention and last checked", html:
+      `<p><b>Needs attention</b> shows when anything in this space is marked Fail on your checklist, or is still open on the Maintenance List. <b>All clear</b> means neither.</p>
+<p>The date is when PDFs were last generated for this space. If it says <b>Not yet checked</b>, at least one section has never been through a PDF run.</p>` },
+    emergencyLighting: { title: "Emergency lighting", html:
+      `<p>Every emergency light and exit sign in this space is listed. Tap <b>Pass</b> if it is working as it should, or <b>Fail</b> if not, and say what is wrong.</p>
+<p>Failed lights go onto the Maintenance List when you generate the PDFs. <b>Mark all pass</b> (when the section is open) marks every item Pass in one tap.</p>` },
+    fireExtinguishers: { title: "Fire extinguishers", html:
+      `<p>Every extinguisher is listed with a coloured tag for its type (CO2, Foam and so on), so two at the same spot are easy to tell apart. Tap <b>Pass</b> or <b>Fail</b> on each one.</p>
+<p>Failed extinguishers go onto the Maintenance List when you generate the PDFs.</p>` },
+    fireDoors: { title: "Fire doors", html:
+      `<p>Every fire door in this space is listed. Tap <b>Pass</b> or <b>Fail</b> on each one, and say what is wrong if it fails.</p>
+<p>Failed doors go onto the Maintenance List when you generate the PDFs.</p>` },
+    waterTemp: { title: "Water temperature", html:
+      `<p>Type the <b>hot</b> and <b>cold</b> readings in &deg;C for each outlet. <b>Water flushed through</b> is ticked for you, untick it if it was not.</p>
+<p>Most outlets are fine, so leave them on <b>Pass</b>. If a reading is too low (hot water should reach 50&deg;C), tap <b>Fail</b>, say what you found, and say what you did about it in <b>Action taken</b>. Tick <b>Fixed on the spot</b> if you sorted it there and then; it stays on the PDF but is not added to the Maintenance List. Anything not fixed goes onto the Maintenance List when you generate the PDFs.</p>` },
+    actionTaken: { title: "Action taken and Fixed on the spot", html:
+      `<p><b>Action taken</b> is where you say what has been done about a problem, e.g. &ldquo;Reported to facilities&rdquo; or &ldquo;Tag replaced&rdquo;. It is printed on the PDF and copied to the <b>Action note</b> on the Maintenance List.</p>
+<p>Tick <b>Fixed on the spot</b> when you sorted it there and then. The fail and what you did stay on the PDF, but it is <b>not</b> added to the Maintenance List, so it never reaches the monthly email. If it was already on the list, it is marked resolved.</p>
+<p>Next month, a Fail on the same item starts with last month&rsquo;s reason and action filled in. Change them if they have moved on.</p>` },
+    pdf: { title: "Generating PDFs", html:
+      `<p>Choose only the sections you actually went through on this visit.</p>
+<p>On a phone, the <b>share sheet</b> opens: choose <b>${sat ? "Files or Drive" : "Drive"}</b> to save them. On a computer they download.</p>
+<p>At the same moment the app updates the <b>Maintenance List</b>: new fails are added, ones already on it get the latest wording, and the date checked is recorded. If your signal is poor, the update is saved and sent automatically when it returns. The line under the logo says when one is waiting.</p>
+${sat ? "<p>Afterwards, use <b>Monthly email to facilities</b> to send your PDFs.</p>" : ""}` },
+    maintList: { title: sat ? "Maintenance List" : "The Maintenance List", html: sat
+      ? `<p>Every fault flagged at ${helpSite_()} that is not fixed yet. Open your site to see the issues. Add an <b>Action note</b> to say what is happening, and tap <b>Mark resolved</b> only once the repair is done.</p><p><b>Refresh</b> loads the latest.</p>`
+      : `<p>The shared list of everything flagged and not yet fixed, for every space. It is the same for everyone on any device.</p>
+<p>Items arrive by themselves when PDFs are generated with a Fail on the checklist. Add an <b>Action note</b> as things progress and tap <b>Mark resolved</b> when it is properly fixed.</p>
+<p><b>Open Sheet</b> opens the Google Sheet behind it. <b>Refresh</b> loads the latest.</p>` },
+    summary: { title: "Monthly summary email", html: sat
+      ? `<p>Builds the email to facilities for the month you choose. It says whether your checks were completed and lists anything still outstanding.</p>
+<p>Tap <b>Copy body and open my email app</b>. It opens a new email to ${FACILITIES_EMAIL}, then <b>paste</b> the body in. Remember to <b>attach your PDFs</b>, then send.</p>`
+      : `<p>Builds the end of month email for the month you choose. It says which spaces were completed and lists only what is still outstanding. Things marked resolved or fixed on the spot are left out.</p>
+<p>Tap <b>Copy body and open my email app</b>, paste into the new email, <b>attach the PDFs</b>, and send. Pasting keeps your email signature.</p>
+<p>Satellite sites are left out of this email for now.</p>` },
+    sats: { title: "Satellite sites", html:
+      `<p>Each site has its own page for its manager. <b>Open page</b> shows it, and <b>Copy link</b> copies the address to send them. Send each manager only their own link.</p>
+<p>What they flag goes onto the same Maintenance List, grouped under <b>Satellite sites</b>.</p>` },
+    edit: { title: "Editing checkpoints", html:
+      `<p>Tap <b>+</b> to add a checkpoint, the <b>pencil</b> to rename, <b>&#10005;</b> to remove. Press and hold a row, or grab the &#8942;&#8942; handle, to drag it into a new order.</p>
+<p class="help-note">Changes are saved on <b>this device only</b> until they are made permanent. Tap <b>Export All</b>, copy the text and send it to ${sat ? "facilities (" + FACILITIES_EMAIL + ")" : "whoever looks after the app"}, who builds it in for everyone.</p>` }
+  };
+}
+
+let helpState_ = { tab: "screen", topic: null };
+function openHelp_(opts) {
+  opts = opts || {};
+  helpState_ = { tab: opts.tab || "screen", topic: opts.topic || null };
+  renderHelp_();
+  document.getElementById("helpOverlay").classList.add("show");
+  document.getElementById("helpBody").scrollTop = 0;
+}
+function closeHelp_() {
+  document.getElementById("helpOverlay").classList.remove("show");
+  try { localStorage.setItem(HELP_SEEN_KEY, "1"); } catch (e) {}
+}
+function renderHelp_() {
+  const topic = helpState_.topic ? helpTopics_()[helpState_.topic] : null;
+  const tabs = document.getElementById("helpTabs");
+  tabs.style.display = topic ? "none" : "";
+  document.getElementById("helpMore").hidden = !topic;
+  document.getElementById("helpGuideBtn").hidden = !!topic;
+  document.getElementById("helpGuideBtn").href = HELP_GUIDE_URL;
+  document.getElementById("helpDone").textContent = topic ? "Got it" : "Done";
+  if (topic) {
+    document.getElementById("helpTitle").textContent = topic.title;
+    document.getElementById("helpBody").innerHTML = topic.html;
+    return;
+  }
+  document.getElementById("helpTitle").textContent = "Help";
+  tabs.querySelectorAll(".help-tab").forEach(b => b.classList.toggle("active", b.getAttribute("data-tab") === helpState_.tab));
+  document.getElementById("helpBody").innerHTML =
+    helpState_.tab === "quick" ? helpQuickStart_() :
+    helpState_.tab === "tags" ? helpTagsHTML_() : helpScreenHTML_();
+}
+
+document.getElementById("helpBtn").onclick = () => openHelp_({ tab: "screen" });
+document.getElementById("helpClose").onclick = closeHelp_;
+document.getElementById("helpDone").onclick = closeHelp_;
+document.getElementById("helpMore").onclick = () => openHelp_({ tab: "screen" });
+document.getElementById("helpOverlay").addEventListener("click", (e) => { if (e.target.id === "helpOverlay") closeHelp_(); });
+document.getElementById("helpTabs").addEventListener("click", (e) => {
+  const b = e.target.closest ? e.target.closest(".help-tab") : null;
+  if (!b) return;
+  helpState_.tab = b.getAttribute("data-tab");
+  renderHelp_();
+  document.getElementById("helpBody").scrollTop = 0;
+});
+// Any ? dot, anywhere in the app. Captured first so it never also toggles the
+// section or button it sits next to.
+document.addEventListener("click", (e) => {
+  const dot = e.target.closest ? e.target.closest("[data-help]") : null;
+  if (!dot) return;
+  e.stopPropagation();
+  e.preventDefault();
+  openHelp_({ topic: dot.getAttribute("data-help") });
+}, true);
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape" && document.getElementById("helpOverlay").classList.contains("show")) closeHelp_();
+});
+
+/* ======================================================================
    INIT
    ====================================================================== */
 render();
@@ -3993,6 +4311,11 @@ silentRefreshMaintenanceList();
 setInterval(silentRefreshMaintenanceList, 60000);
 runSyncJobs_(true);
 setInterval(() => runSyncJobs_(true), 60000);
+
+// First time on this device: show the quick start once.
+try {
+  if (!localStorage.getItem(HELP_SEEN_KEY)) setTimeout(() => openHelp_({ tab: "quick" }), 700);
+} catch (e) {}
 </script>
 
 <script>
