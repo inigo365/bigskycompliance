@@ -491,7 +491,7 @@
   .actioned-label-row .actioned-label{margin-bottom:0;}
   .modal-box h3 .help-dot{margin-left:8px;}
   .help-overlay{z-index:70;}
-  .help-box{max-width:430px;max-height:calc(100vh - 40px);display:flex;flex-direction:column;padding:0;overflow:hidden;}
+  .modal-box.help-box{max-width:430px;max-height:calc(100vh - 40px);display:flex;flex-direction:column;padding:0;overflow:hidden;}
   .help-head{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:16px 18px 8px;}
   .help-head h3{margin:0;}
   .help-x{background:none;border:none;font-size:18px;color:var(--muted);padding:4px 6px;cursor:pointer;}
@@ -524,6 +524,32 @@
   .help-foot .modal-btn{flex:1;text-align:center;text-decoration:none;display:flex;align-items:center;justify-content:center;}
   .help-foot .modal-btn[hidden]{display:none;}
   .help-foot .modal-btn.confirm{background:var(--accent);border-color:var(--accent);color:#fff;}
+  /* The help sheet scales with the screen: compact on a phone, roomy on a
+     tablet or desktop, with text, buttons and the tag rows growing with it. */
+  @media (min-width:700px){
+    .modal-box.help-box{max-width:min(860px,90vw);max-height:90vh;border-radius:20px;}
+    .modal-box.help-box.help-full{height:min(82vh,820px);}
+    .help-head{padding:26px 32px 10px;}
+    .help-head h3{font-size:24px;}
+    .help-x{font-size:22px;padding:6px 10px;}
+    .help-tabs{padding:6px 32px 16px;gap:10px;}
+    .help-tab{font-size:16px;padding:10px 20px;}
+    .help-body{padding:22px 32px 10px;font-size:16.5px;line-height:1.6;}
+    .help-box .help-body p{font-size:16.5px;margin-bottom:14px;}
+    .help-body h4{font-size:15px;margin:22px 0 10px;}
+    .help-body li{margin-bottom:9px;}
+    .help-steps li{padding-left:44px;margin-bottom:16px;}
+    .help-note{font-size:15px;padding:14px 16px;}
+    .help-tag-row{display:flex;gap:24px;align-items:flex-start;padding:16px 0;}
+    .help-tag-left{flex:0 0 38%;margin-bottom:0;}
+    .help-tag-right{font-size:16px;flex:1 1 auto;}
+    .help-foot{padding:16px 32px 24px;gap:12px;}
+    .help-foot .modal-btn{font-size:16px;padding:14px 20px;}
+  }
+  @media (min-width:1200px){
+    .modal-box.help-box{max-width:min(980px,80vw);}
+    .help-body,.help-box .help-body p,.help-tag-right{font-size:17.5px;}
+  }
   .pdf-btn{
     width:100%;
     max-width:680px;
@@ -4112,6 +4138,7 @@ function closeHelp_() {
 function renderHelp_() {
   const topic = helpState_.topic ? helpTopics_()[helpState_.topic] : null;
   const tabs = document.getElementById("helpTabs");
+  document.querySelector(".help-box").classList.toggle("help-full", !topic);
   tabs.style.display = topic ? "none" : "";
   document.getElementById("helpMore").hidden = !topic;
   document.getElementById("helpGuideBtn").hidden = !!topic;
