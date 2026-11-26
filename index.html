@@ -281,6 +281,26 @@
     background:var(--paper);color:var(--muted);
     border:1px solid var(--line);
   }
+  .progress-tag{
+    font-size:10.5px;font-weight:700;
+    padding:4px 10px;border-radius:999px;white-space:nowrap;
+  }
+  .progress-tag.part{background:#fdf3d9;color:#8a6414;border:1px solid #eddca0;}
+  .progress-tag.done{background:var(--pass-soft);color:var(--pass);border:1px solid #c9e6d6;}
+  .todo-chip{
+    font-size:10px;font-weight:700;padding:2px 8px;border-radius:999px;
+    background:#fdf3d9;color:#8a6414;border:1px solid #eddca0;white-space:nowrap;
+  }
+  .maint-todo-note{
+    font-size:12.5px;color:#8a6414;background:#fdf3d9;border-radius:8px;
+    padding:8px 10px;margin:8px 0 4px;
+  }
+  .sheet-box{max-width:420px;}
+  .sheet-box .help-foot .modal-btn{white-space:nowrap;flex:1 1 auto;}
+  .sheet-box .help-body p{margin:0 0 12px;}
+  .sheet-box #sheetDone{flex:0 0 auto;padding-left:22px;padding-right:22px;}
+  .sheet-box .help-body{padding:6px 20px 8px;font-size:14px;line-height:1.5;overflow:visible;max-height:none;}
+  @media (min-width:700px){.sheet-box{max-width:520px;}.sheet-box .help-body{padding:10px 32px 10px;font-size:16.5px;}}
   .last-checked-tag.never{
     background:#fdf3d9;color:#b8860b;border-color:#eddca0;
   }
@@ -886,7 +906,7 @@
     </div>
     <div class="brand-right">
       <span class="app-version" id="appVersion"></span>
-      <button class="help-btn" id="helpBtn" type="button">? Help</button>
+      <button class="help-btn" id="helpBtn" type="button">Help?</button>
     </div>
   </div>
   <div class="savebar" id="saveBar">All changes saved on this device</div>
@@ -920,8 +940,7 @@
   <div id="maintenanceHeaderControls" style="display:none;">
     <div class="maint-toolbar">
       <button class="maint-toolbar-btn" id="maintRefreshBtn">Refresh</button>
-      <a class="maint-toolbar-btn maint-sheet-link" id="maintSheetLink" href="#" target="_blank" rel="noopener">Open Sheet</a>
-      <button class="help-dot" type="button" data-help="maintList" aria-label="Help with the Maintenance List">?</button>
+      <button class="maint-toolbar-btn maint-sheet-link" id="maintSheetLink" type="button">Open Sheet</button>
     </div>
     <button class="edit-toggle" id="summaryBtn">Monthly summary email</button>
   </div>
@@ -1008,6 +1027,20 @@
   </div>
 </div>
 
+<div class="modal-overlay" id="sheetOverlay">
+  <div class="modal-box sheet-box">
+    <div class="help-head"><h3>The Maintenance Sheet</h3><button class="help-x" id="sheetClose" type="button" aria-label="Close">&#10005;</button></div>
+    <div class="help-body">
+      <p>This is the Google Sheet where all of the Maintenance List data is stored. It is connected to this page, so everything you see on the list is read from it, and anything flagged when PDFs are generated is written to it.</p>
+      <p>It is handy for seeing everything in one table. You do not need it for day-to-day use, because you can add notes and mark issues resolved from this page.</p>
+    </div>
+    <div class="help-foot">
+      <button class="modal-btn cancel" id="sheetDone" type="button">Close</button>
+      <a class="modal-btn confirm" id="sheetGoBtn" href="#" target="_blank" rel="noopener">Open Google Sheet</a>
+    </div>
+  </div>
+</div>
+
 <div class="modal-overlay help-overlay" id="helpOverlay">
   <div class="modal-box help-box">
     <div class="help-head"><h3 id="helpTitle">Help</h3><button class="help-x" id="helpClose" type="button" aria-label="Close">&#10005;</button></div>
@@ -1040,7 +1073,7 @@ const BIGSKY_LOGO_ASPECT = 700 / 142; // width / height of the source PNG
    ====================================================================== */
 /* App version, shown top right in the header so it is obvious which copy is
    running. Bump this every time index.html is changed. */
-const APP_VERSION = "v2.14";
+const APP_VERSION = "v2.15";
 const APP_VERSION_DATE = "24 Nov 2026";
 
 /* This file is the MAIN app. The satellite pages (satellite/*.html) are generated
@@ -1059,7 +1092,16 @@ const EMAIL_INCLUDES_SATELLITES = false;
 const MAINTENANCE_API_URL = "https://script.google.com/macros/s/AKfycbznKry2pHDDGfTZItJbeleeCnLRj3ygV9geT46RBFFyLmWFUfu3CsVv8lUelXYF4oFJ/exec";
 const MAINTENANCE_SHEET_URL = "https://docs.google.com/spreadsheets/d/1zxLffQ_Fb_-oK7ndJMgNyKR-d7IOMIQ8veTSad6NzwA/edit?usp=sharing";
 
-document.getElementById("maintSheetLink").href = MAINTENANCE_SHEET_URL;
+document.getElementById("sheetGoBtn").href = MAINTENANCE_SHEET_URL;
+(function () {
+  const ov = document.getElementById("sheetOverlay");
+  const close = () => ov.classList.remove("show");
+  document.getElementById("maintSheetLink").onclick = () => ov.classList.add("show");
+  document.getElementById("sheetClose").onclick = close;
+  document.getElementById("sheetDone").onclick = close;
+  document.getElementById("sheetGoBtn").addEventListener("click", () => setTimeout(close, 150));
+  ov.addEventListener("click", (e) => { if (e.target === ov) close(); });
+})();
 if (IS_SATELLITE) {
   document.getElementById("summaryBtn").style.display = "none";
   document.getElementById("maintSheetLink").style.display = "none";
@@ -1649,7 +1691,7 @@ function renderMain() {
     </div>
     <div class="space-status-col">
       <span class="status-pill ${issue ? "attention" : "ok"}">${issue ? "Needs attention" : "All clear"}</span>
-      ${lastCheckedTagHTML(getLastCheckedSummary(space))}
+      ${monthProgressTagHTML_(space) || lastCheckedTagHTML(getLastCheckedSummary(space))}
     </div>`;
   banner.querySelector(".space-status-col").appendChild(helpDotEl_("status"));
   main.appendChild(banner);
@@ -1687,6 +1729,13 @@ function renderMain() {
     const h3 = document.createElement("h3");
     h3.textContent = t.label;
     left.appendChild(h3);
+    const monthProg = getMonthProgress_(space);
+    if (!editMode && monthProg && monthProg.done.length && monthProg.todo.some(x => x.id === t.id)) {
+      const chip = document.createElement("span");
+      chip.className = "todo-chip";
+      chip.textContent = "To do";
+      left.appendChild(chip);
+    }
     left.appendChild(helpDotEl_(t.id));
     head.appendChild(left);
 
@@ -2564,6 +2613,34 @@ function getLastCheckedSummary(space) {
   return { status: "checked", date: oldest };
 }
 
+// How far through "this month" a space is: which of its sections have had PDFs
+// generated in the current calendar month, and which are still to do. This is
+// what lets a space with one section missing (e.g. water switched off) read as
+// 3/4 rather than "Not yet checked".
+function getMonthProgress_(space) {
+  if (!checkLogItems) return null;
+  const types = applicableTypes_(space);
+  if (!types.length) return null;
+  const now = new Date();
+  const done = [], todo = [];
+  types.forEach(t => {
+    const entry = checkLogItems.find(it => it.Space === space.name && it["Compliance Type"] === t.id);
+    const d = entry && entry["Last Checked"] ? new Date(entry["Last Checked"]) : null;
+    const thisMonth = d && !isNaN(d.getTime()) && d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth();
+    (thisMonth ? done : todo).push(t);
+  });
+  return { total: types.length, done: done, todo: todo, monthName: now.toLocaleDateString("en-GB", { month: "short" }) };
+}
+// Shown for a space that is part-way (3/4 this month) or finished (Done for
+// Nov). Returns "" at the start of a month, when the Last checked tag is used.
+function monthProgressTagHTML_(space) {
+  const p = space.other ? null : getMonthProgress_(space);
+  if (!p) return "";
+  if (!p.todo.length) return "<span class=\"progress-tag done\">\u2713 Done for " + p.monthName + "</span>";
+  if (p.done.length) return "<span class=\"progress-tag part\">" + p.done.length + "/" + p.total + " this month</span>";
+  return "";
+}
+
 function formatLastChecked(summary) {
   if (!summary || summary.status === "none") return null;
   if (summary.status === "never") return "Not yet checked";
@@ -3025,7 +3102,7 @@ function renderMaintenanceView() {
       "<span class=\"maint-count" + (items.length ? "" : " zero") + "\">" +
       (items.length ? items.length + " open" : "Clear") + "</span>" +
       dueTagHTML(lastChecked) +
-      lastCheckedTagHTML(lastChecked) +
+      (monthProgressTagHTML_(space) || lastCheckedTagHTML(lastChecked)) +
       "</div>";
     head.onclick = () => {
       if (openMaintSpaces.has(space.id)) openMaintSpaces.delete(space.id);
@@ -3036,6 +3113,13 @@ function renderMaintenanceView() {
 
     const body = document.createElement("div");
     body.className = "maint-space-body";
+    const monthProg = space.other ? null : getMonthProgress_(space);
+    if (monthProg && monthProg.done.length && monthProg.todo.length) {
+      const todoNote = document.createElement("div");
+      todoNote.className = "maint-todo-note";
+      todoNote.textContent = "Still to do this month: " + monthProg.todo.map(t => t.label).join(", ") + ".";
+      body.appendChild(todoNote);
+    }
     if (!items.length) {
       const p = document.createElement("div");
       p.className = "maint-space-empty";
@@ -4150,8 +4234,10 @@ function helpTagsHTML_() {
   return `<h4>What the tags and colours mean</h4>
 <div class="help-tag-row"><div class="help-tag-left"><span class="status-pill ok">All clear</span><span class="status-pill attention">Needs attention</span></div>
 <div class="help-tag-right">Shown at the top of a space. <b>Needs attention</b> means something in it is marked Fail on your checklist, or is still open on the Maintenance List.</div></div>
+<div class="help-tag-row"><div class="help-tag-left"><span class="progress-tag part">3/4 this month</span><span class="progress-tag done">&#10003; Done for Nov</span></div>
+<div class="help-tag-right">How many of a space's sections have had PDFs generated this month. <b>3/4</b> means one is still to do, for example water that could not be done. That section is marked <b>To do</b> on the checklist, and the Maintenance List says which one is missing. <b>Done</b> means every section is finished.</div></div>
 <div class="help-tag-row"><div class="help-tag-left"><span class="last-checked-tag">Last checked 12 Nov</span><span class="last-checked-tag never">Not yet checked</span></div>
-<div class="help-tag-right">The date PDFs were last generated for the space. It uses the <b>oldest</b> date across its sections, so one forgotten section shows. &ldquo;Not yet checked&rdquo; means at least one section has never been through a PDF run.</div></div>
+<div class="help-tag-right">Shown at the start of a month, before any section is done: the date PDFs were last generated for the space (the <b>oldest</b> across its sections). &ldquo;Not yet checked&rdquo; means at least one section has never been through a PDF run.</div></div>
 <div class="help-tag-row"><div class="help-tag-left"><span class="due-tag soon">Due soon</span><span class="due-tag due">Due</span><span class="due-tag urgent">Urgent</span></div>
 <div class="help-tag-right">On the Maintenance List only. <b>Due soon</b> at 3 weeks since the last check, <b>Due</b> at 1 month, <b>Urgent</b> at 2 months. Only one tag shows at a time. Generating PDFs resets it.</div></div>
 <div class="help-tag-row"><div class="help-tag-left"><span class="section-dot" style="position:static;display:inline-block;"></span></div>
@@ -4193,7 +4279,7 @@ function helpScreenHTML_() {
 <ul>
 <li><b>Tap a space</b> to open it. The number is how many issues are open, or <b>Clear</b> when there are none. The tags show when it was last checked and whether it is due.</li>
 <li><b>Each issue</b> shows what is wrong and when it was flagged. Type in <b>Action note</b> what is being done (it saves by itself), and tap <b>Mark resolved</b> once it is properly fixed.</li>
-<li><b>Refresh</b> loads the latest. <b>Open Sheet</b> opens the Google Sheet behind the list.</li>
+<li><b>Refresh</b> loads the latest. <b>Open Sheet</b> explains the Google Sheet behind the list and has a button to open it.</li>
 <li><b>Monthly summary email</b> builds the end of month email for the facilities team.</li>
 </ul>
 <p class="help-note">You never have to add items by hand. They arrive when someone generates PDFs with a Fail on the checklist.</p>`;
@@ -4224,7 +4310,7 @@ function helpTopics_() {
   return {
     status: { title: "All clear, Needs attention and last checked", html:
       `<p><b>Needs attention</b> shows when anything in this space is marked Fail on your checklist, or is still open on the Maintenance List. <b>All clear</b> means neither.</p>
-<p>The date is when PDFs were last generated for this space. If it says <b>Not yet checked</b>, at least one section has never been through a PDF run.</p>` },
+<p>The tag next to it shows progress for the month. <b>3/4 this month</b> means three of the four sections have PDFs and one is still to do (marked <b>To do</b> below). <b>Done for Nov</b> means all of them are finished. Before anything is done in a new month it shows when the space was last checked instead.</p>` },
     emergencyLighting: { title: "Emergency lighting", html:
       `<p>Every emergency light and exit sign in this space is listed. Tap <b>Pass</b> if it is working as it should, or <b>Fail</b> if not, and say what is wrong.</p>
 <p>Failed lights go onto the Maintenance List when you generate the PDFs. <b>Mark all pass</b> (when the section is open) marks every item Pass in one tap.</p>` },
@@ -4250,7 +4336,7 @@ ${sat ? "<p>Afterwards, use <b>Monthly email to facilities</b> to send your PDFs
       ? `<p>Every fault flagged at ${helpSite_()} that is not fixed yet. Open your site to see the issues. Add an <b>Action note</b> to say what is happening, and tap <b>Mark resolved</b> only once the repair is done.</p><p><b>Refresh</b> loads the latest.</p>`
       : `<p>The shared list of everything flagged and not yet fixed, for every space. It is the same for everyone on any device.</p>
 <p>Items arrive by themselves when PDFs are generated with a Fail on the checklist. Add an <b>Action note</b> as things progress and tap <b>Mark resolved</b> when it is properly fixed.</p>
-<p><b>Open Sheet</b> opens the Google Sheet behind it. <b>Refresh</b> loads the latest.</p>` },
+<p><b>Open Sheet</b> explains the Google Sheet behind the list and has a button to open it. <b>Refresh</b> loads the latest.</p>` },
     summary: { title: "Monthly summary email", html: sat
       ? `<p>Builds the email to facilities for the month you choose. It says whether your checks were completed and lists anything still outstanding.</p>
 <p>Tap <b>Copy body and open my email app</b>. It opens a new email to ${FACILITIES_EMAIL}, then <b>paste</b> the body in. Remember to <b>attach your PDFs</b>, then send.</p>`
@@ -4339,10 +4425,6 @@ setInterval(silentRefreshMaintenanceList, 60000);
 runSyncJobs_(true);
 setInterval(() => runSyncJobs_(true), 60000);
 
-// First time on this device: show the quick start once.
-try {
-  if (!localStorage.getItem(HELP_SEEN_KEY)) setTimeout(() => openHelp_({ tab: "quick" }), 700);
-} catch (e) {}
 </script>
 
 <script>
