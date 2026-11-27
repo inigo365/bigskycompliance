@@ -472,6 +472,12 @@
     line-height:1.4;
   }
 
+  .maint-flag-badge.pending-resolve{
+    color:var(--pass);
+    background:var(--pass-soft);
+    border-color:#c9e6d6;
+  }
+
   .empty-note{
     font-size:12px;color:var(--muted);padding:8px 0 12px;font-style:italic;
   }
@@ -1076,8 +1082,8 @@ const BIGSKY_LOGO_ASPECT = 700 / 142; // width / height of the source PNG
    ====================================================================== */
 /* App version, shown top right in the header so it is obvious which copy is
    running. Bump this every time index.html is changed. */
-const APP_VERSION = "v2.15";
-const APP_VERSION_DATE = "29 Oct 2026";
+const APP_VERSION = "v2.18";
+const APP_VERSION_DATE = "27 Nov 2026";
 
 /* This file is the MAIN app. The satellite pages (satellite/*.html) are generated
    copies of it with IS_SATELLITE = true and their own site data. */
@@ -1607,11 +1613,22 @@ function renderMain() {
       const btn = document.createElement("button");
       btn.className = "mark-all";
       btn.textContent = "Mark all pass";
-      btn.onclick = (e) => {
+      btn.onclick = async (e) => {
         e.stopPropagation();
+        const onList = cps.filter(cp => openMaintenanceForCheckpoint(cp.id)).length;
+        if (onList) {
+          const ok = await showConfirmModal({
+            title: "Mark all pass?",
+            message: onList + (onList === 1 ? " item" : " items") + " in this section " + (onList === 1 ? "is" : "are") + " open on the Maintenance List. Marking everything Pass will resolve " + (onList === 1 ? "it" : "them") + " when you generate the PDFs.\n\nOnly continue if everything has been fixed.",
+            confirmLabel: "Mark all pass"
+          });
+          if (!ok) return;
+        }
+        const nowIso = new Date().toISOString();
         cps.forEach(cp => {
           const d = state.items[space.id][t.id][cp.id];
           d.status = "pass";
+          d.passedAt = nowIso;
           d.notes = "";
           d.actioned = "";
           d.fixed = false;
@@ -2114,11 +2131,58 @@ function buildActionedBox_(data, cp) {
   return wrap;
 }
 
-function buildMaintBadge(cp) {
+// An item that is Open on the shared Maintenance List counts as still failing
+// until someone presses Pass on purpose. A Pass only stands if it was pressed
+// after the item was flagged, so a fresh phone (where everything starts on Pass)
+// or an issue raised later on another device never resolves anything by accident.
+function passStillStands_(data, entry) {
+  if (!data || data.status !== "pass" || !data.passedAt) return false;
+  const p = new Date(data.passedAt);
+  if (isNaN(p.getTime())) return false;
+  const f = parseSheetDate_(entry["Date Flagged"]);
+  return !f || p >= f;
+}
+
+// Open on the list but showing Pass without a deliberate Pass: switch it to Fail
+// with the reason and action from the list filled in, so it is retested and
+// passed on purpose. Returns true when anything changed.
+function reconcileOpenItems_() {
+  if (!maintenanceItems || !maintenanceItems.length) return false;
+  let changed = false;
+  Object.keys(CHECKPOINTS).forEach(spaceId => {
+    COMPLIANCE_TYPES.forEach(t => {
+      const cps = (CHECKPOINTS[spaceId] || {})[t.id] || [];
+      cps.forEach(cp => {
+        const data = ((state.items[spaceId] || {})[t.id] || {})[cp.id];
+        if (!data || data.status !== "pass") return;
+        const entry = openMaintenanceForCheckpoint(cp.id);
+        if (!entry || passStillStands_(data, entry)) return;
+        const issue = entry.Issue ? String(entry.Issue).trim() : "";
+        data.status = "fail";
+        data.fixed = false;
+        delete data.passedAt;
+        data.notes = (issue && issue !== "Marked Fail (no note added)") ? issue : "";
+        const note = entry["Action Note"] ? String(entry["Action Note"]).trim() : "";
+        data.actioned = note;
+        if (note) pushedMaintenance["act:" + cp.id] = note;
+        changed = true;
+      });
+    });
+  });
+  if (changed) { savePushed(); saveState(); }
+  return changed;
+}
+
+function buildMaintBadge(cp, data) {
   const entry = openMaintenanceForCheckpoint(cp.id);
   if (!entry) return null;
   const badge = document.createElement("div");
   badge.className = "maint-flag-badge";
+  if (data && passStillStands_(data, entry)) {
+    badge.className += " pending-resolve";
+    badge.textContent = "\u2713 Passed. Will be marked resolved on the Maintenance List when you generate the PDFs";
+    return badge;
+  }
   const issueText = entry.Issue ? ": " + entry.Issue : "";
   badge.textContent = "\u26A0 Open on Maintenance List" + issueText;
   return badge;
@@ -2138,6 +2202,7 @@ function buildPassFailToggle_(data, cp) {
   failBtn.textContent = "Fail";
   passBtn.onclick = () => {
     data.status = "pass";
+    data.passedAt = new Date().toISOString(); // a deliberate Pass: resolves its Maintenance List item at the next PDF run
     data.notes = ""; // a Pass carries no failure note, so old text can't print on the PDF
     data.actioned = "";
     data.fixed = false;
@@ -2152,6 +2217,7 @@ function buildPassFailToggle_(data, cp) {
     // was on Pass is stale: start the box clean before prefilling.
     if (data.status !== "fail") { data.notes = ""; data.actioned = ""; data.fixed = false; }
     data.status = "fail";
+    delete data.passedAt;
     // If this checkpoint already has an open entry on the shared Maintenance
     // List, tapping Fail means it still has not been fixed, so carry the
     // original description over instead of leaving the box empty. Never
@@ -2200,7 +2266,7 @@ function renderPassFailItem(spaceId, typeId, cp) {
 
   item.appendChild(top);
 
-  const badge = buildMaintBadge(cp);
+  const badge = buildMaintBadge(cp, data);
   if (badge) item.appendChild(badge);
 
   if (data.status === "fail") {
@@ -2230,7 +2296,7 @@ function renderWaterItem(spaceId, typeId, cp) {
   top.appendChild(buildPassFailToggle_(data, cp));
   item.appendChild(top);
 
-  const badge = buildMaintBadge(cp);
+  const badge = buildMaintBadge(cp, data);
   if (badge) item.appendChild(badge);
 
   const row = document.createElement("div");
@@ -2417,6 +2483,7 @@ async function loadMaintenanceList() {
     const parsed = parseMaintenanceResponse_(data);
     maintenanceItems = parsed.maintenance;
     checkLogItems = parsed.checkLog;
+    reconcileOpenItems_();
   } catch (e) {
     maintenanceError = true;
     maintenanceItems = [];
@@ -2436,6 +2503,7 @@ async function silentRefreshMaintenanceList() {
     maintenanceItems = parsed.maintenance;
     checkLogItems = parsed.checkLog;
     maintenanceError = false;
+    reconcileOpenItems_();
     renderSoon_();
     return true;
   } catch (e) {
@@ -2789,6 +2857,17 @@ function buildSyncJob_(space, selectedTypes) {
       });
     });
   });
+  // Items deliberately pressed Pass, for the sections in this run only. The
+  // script resolves the matching open rows (and ignores anything flagged after).
+  const passes = [];
+  const runTypes = new Set(selectedTypes.map(t => t.id));
+  COMPLIANCE_TYPES.forEach(type => {
+    if (!runTypes.has(type.id)) return;
+    CHECKPOINTS[space.id][type.id].forEach(cp => {
+      const data = state.items[space.id][type.id][cp.id];
+      if (data && data.status === "pass" && data.passedAt) passes.push([cp.id, data.passedAt]);
+    });
+  });
   return {
     jobId: "j_" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
     spaceId: space.id,
@@ -2796,7 +2875,8 @@ function buildSyncJob_(space, selectedTypes) {
     checkedAt: new Date().toISOString(),
     checkedBy: (ui.checkedBy || "").trim(),
     checkTypes: selectedTypes.map(t => t.id),
-    items: items
+    items: items,
+    passes: passes
   };
 }
 
@@ -2838,7 +2918,7 @@ async function runSyncJobs_(quiet) {
   if (!loadSyncJobs_().length) return;
   syncingJobs_ = true;
   const done = [];
-  let stuck = false, oldScript = false;
+  let stuck = false, oldScript = false, needV3 = false;
   try {
     while (true) {
       const job = loadSyncJobs_()[0];
@@ -2849,9 +2929,15 @@ async function runSyncJobs_(quiet) {
         checkedAt: job.checkedAt,
         checkedBy: job.checkedBy,
         checkTypes: job.checkTypes,
-        items: job.items
+        items: job.items,
+        passes: job.passes || []
       });
       if (res && res.success && res.scriptVersion >= 2) {
+        // script v2 ignores passes: say so, only when one of them would have resolved something
+        if (res.scriptVersion < 3 && (job.passes || []).some(p => {
+          const open = openMaintenanceForCheckpoint(p[0]);
+          return open && passStillStands_({ status: "pass", passedAt: p[1] }, open);
+        })) needV3 = true;
         saveSyncJobs_(loadSyncJobs_().filter(j => j.jobId !== job.jobId));
         done.push({ space: job.space, added: res.added || 0, updated: res.updated || 0, resolved: res.resolved || 0 });
       } else if (res && res.success) {
@@ -2877,6 +2963,7 @@ async function runSyncJobs_(quiet) {
     showToast(parts.length ? "Maintenance List updated for " + d.space + " (" + parts.join(", ") + ")" : "Check recorded for " + d.space);
   });
   if (oldScript) showToast("Update the Maintenance List script to overwrite existing reasons");
+  if (needV3) showToast("Update the Maintenance List script (v3) so items you pass are resolved automatically");
   if (stuck && !quiet) showToast("Couldn't reach the Maintenance List. Saved, will retry automatically");
 }
 
@@ -3166,11 +3253,18 @@ function summaryCoverage_(year, month) {
   return out;
 }
 
-function summaryIssueSets_(year, month) {
-  const { start, end } = monthBounds_(year, month);
+// Everything that was open at the end of the chosen month. The email is for team
+// visibility, so new and older items are not separated.
+function summaryOpenRows_(year, month) {
+  const { end } = monthBounds_(year, month);
   const cpIndex = checkpointIndex_();
   const siteNames = new Set(allSpacesFlat().map(s => s.name));
-  const rows = (maintenanceItems || []).filter(it => !IS_SATELLITE || siteNames.has(String(it.Space || ""))).map(it => {
+  const satelliteNames = new Set(SATELLITE_SITES.map(s => s.name));
+  const rows = (maintenanceItems || []).filter(it => {
+    const sp = String(it.Space || "");
+    if (IS_SATELLITE) return siteNames.has(sp); // a satellite page's own email: its own site only
+    return EMAIL_INCLUDES_SATELLITES || !satelliteNames.has(sp);
+  }).map(it => {
     const cp = it["Checkpoint ID"] ? cpIndex[it["Checkpoint ID"]] : null;
     const ext = cp && cp.extType ? extinguisherType(cp.extType) : null;
     const issueRaw = String(it.Issue || "").trim();
@@ -3183,47 +3277,36 @@ function summaryIssueSets_(year, month) {
       issue: (!issueRaw || issueRaw === SUMMARY_PLACEHOLDER_ISSUE)
         ? "Marked as failed, no description added"
         : issueRaw.replace(/[.\s]+$/, ""),
-      action: String(it["Action Note"] || "").trim(),
+      action: String(it["Action Note"] || "").trim().replace(/[.\s]+$/, ""),
       flagged: parseSheetDate_(it["Date Flagged"]),
       isResolved: isResolved,
       resolved: isResolved ? parseSheetDate_(it["Resolved At"]) : null
     };
   });
-  const flaggedBefore = r => !r.flagged || r.flagged < start;
   // Anything already resolved by the end of the month is left out. The email
   // is for what still needs dealing with, not what was fixed in-house.
   const resolvedByEnd = r => r.isResolved && (!r.resolved || r.resolved < end);
-  return {
-    added: rows.filter(r => r.flagged && r.flagged >= start && r.flagged < end && !resolvedByEnd(r)),
-    stillOpen: rows.filter(r => flaggedBefore(r) && !resolvedByEnd(r))
-  };
+  return rows.filter(r => (!r.flagged || r.flagged < end) && !resolvedByEnd(r));
 }
 
-// Groups rows by space (in the app's usual order), then by compliance type.
-function groupRows_(rows) {
+// One group per space (in the app's usual order), each with its items in
+// section order, then oldest first.
+function groupBySpace_(rows) {
   const spaceOrder = allMaintenanceSpaces_().map(s => s.name);
   const typeOrder = COMPLIANCE_TYPES.map(t => t.id);
-  const bySpace = new Map();
-  rows.slice().sort((a, b) => (a.flagged || 0) - (b.flagged || 0)).forEach(r => {
-    if (!bySpace.has(r.space)) bySpace.set(r.space, new Map());
-    const byType = bySpace.get(r.space);
-    if (!byType.has(r.typeId)) byType.set(r.typeId, []);
-    byType.get(r.typeId).push(r);
-  });
   const rank = (arr, v) => { const i = arr.indexOf(v); return i < 0 ? 999 : i; };
-  const isSat = sp => SATELLITE_SITES.some(s => s.name === sp);
+  const bySpace = new Map();
+  rows.forEach(r => {
+    if (!bySpace.has(r.space)) bySpace.set(r.space, []);
+    bySpace.get(r.space).push(r);
+  });
   return [...bySpace.keys()]
     .sort((a, b) => (rank(spaceOrder, a) - rank(spaceOrder, b)) || a.localeCompare(b))
-    .map(sp => {
-      const byType = bySpace.get(sp);
-      const types = [...byType.keys()]
-        .sort((a, b) => rank(typeOrder, a) - rank(typeOrder, b))
-        .map(tid => {
-          const meta = COMPLIANCE_TYPES.find(t => t.id === tid);
-          return { label: meta ? meta.label : tid, rows: byType.get(tid) };
-        });
-      return { space: sp, satellite: isSat(sp), types: types };
-    });
+    .map(sp => ({
+      space: sp,
+      rows: bySpace.get(sp).slice().sort((a, b) =>
+        (rank(typeOrder, a.typeId) - rank(typeOrder, b.typeId)) || ((a.flagged || 0) - (b.flagged || 0)))
+    }));
 }
 
 // Extinguisher rows already carry their type in the checkpoint name when they
@@ -3233,59 +3316,10 @@ function rowLabel_(r) {
   return r.name + (r.ext && !has ? " (" + r.ext + ")" : "");
 }
 
-function rowRest_(r, kind) {
-  let t = ": " + r.issue;
-  const bits = [];
-  if (kind === "added") {
-    if (r.flagged) bits.push("flagged " + dayLabel_(r.flagged));
-    if (r.isResolved && r.resolved) bits.push("since resolved " + dayLabel_(r.resolved));
-  } else if (kind === "open") {
-    if (r.flagged) bits.push("open since " + dayLabel_(r.flagged));
-    if (r.isResolved && r.resolved) bits.push("since resolved " + dayLabel_(r.resolved));
-  }
-  if (bits.length) t += " (" + bits.join(", ") + ")";
-  if (!r.isResolved && r.action) t += ". Action: " + r.action;
-  return t;
-}
-
-function rowText_(r, kind) {
-  return rowLabel_(r) + rowRest_(r, kind);
-}
-
-function sectionHtml_(title, rows, kind) {
-  let h = '<hr style="border:0;border-top:1px solid #cfcfcf;margin:20px 0 0;">' +
-    '<p style="margin:12px 0 4px;font-size:16px;"><b>' + escapeHtml_(title.toUpperCase()) + " (" + rows.length + ")</b></p>";
-  if (!rows.length) return h + '<p style="margin:2px 0;">None.</p>';
-  groupRows_(rows).forEach(g => {
-    h += '<p style="margin:10px 0 2px;"><b>' + escapeHtml_(g.space + (g.satellite ? " (satellite site)" : "")) + "</b></p>";
-    g.types.forEach(ty => {
-      h += '<p style="margin:2px 0;"><i>' + escapeHtml_(ty.label) + "</i></p>";
-      h += '<ul style="margin:2px 0 6px 20px;padding:0;">';
-      ty.rows.forEach(r => { h += "<li><b>" + escapeHtml_(rowLabel_(r)) + "</b>" + escapeHtml_(rowRest_(r, kind)) + "</li>"; });
-      h += "</ul>";
-    });
-  });
-  return h;
-}
-
-function sectionText_(title, rows, kind) {
-  let t = "\n" + title.toUpperCase() + " (" + rows.length + ")\n";
-  if (!rows.length) return t + "None.\n";
-  groupRows_(rows).forEach(g => {
-    t += "\n" + g.space + (g.satellite ? " (satellite site)" : "") + "\n";
-    g.types.forEach(ty => {
-      t += ty.label + "\n";
-      ty.rows.forEach(r => { t += "- " + rowText_(r, kind) + "\n"; });
-    });
-  });
-  return t;
-}
-
-function rangeText_(first, last, mName) {
-  if (!first || !last) return "";
-  return first.toDateString() === last.toDateString()
-    ? " (checks carried out on " + first.getDate() + " " + mName + ")"
-    : " (checks carried out " + first.getDate() + " to " + last.getDate() + " " + mName + ")";
+// The bold part of a bullet: the item and what is wrong. The action note, when
+// there is one, goes under it in italics (only while the item is still open).
+function bulletParts_(r) {
+  return { main: rowLabel_(r) + ": " + r.issue, note: r.isResolved ? "" : r.action };
 }
 
 // For a satellite page with a single space: which compliance types were
@@ -3311,15 +3345,22 @@ function siteTypeCoverage_(space, year, month) {
 function buildMonthlySummary(year, month, now) {
   now = now || new Date();
   const title = monthTitle_(year, month);
-  const mName = monthName_(year, month);
   const isCurrent = year === now.getFullYear() && month === now.getMonth();
-  const sets = summaryIssueSets_(year, month);
+  const rows = summaryOpenRows_(year, month);
   const cov = summaryCoverage_(year, month);
   const total = cov.done.length + cov.incomplete.length + cov.unknown.length;
   const notes = [];
-
-  let intro = "This summary covers compliance issues for " + title + ".";
   const singleSite = IS_SATELLITE && allSpacesFlat().length === 1 ? allSpacesFlat()[0] : null;
+
+  // Opening paragraph (what was checked), then one line saying what is clear.
+  let intro = "This summary covers compliance issues for " + title + ".";
+  let clearLine = rows.length ? "" : "There are no open issues.";
+  let nothingDone = false;
+  const clear = (subject, partial) => {
+    const who = (partial ? "All checked " : "All ") + subject;
+    return rows.length ? who + " are clear unless mentioned below." : who + " are clear. There are no open issues.";
+  };
+
   if (singleSite) {
     const tc = siteTypeCoverage_(singleSite, year, month);
     const where = singleSite.name + " for " + title;
@@ -3327,54 +3368,59 @@ function buildMonthlySummary(year, month, now) {
       intro = "This summary covers compliance issues for " + where + ".";
       notes.push("Whether every check was completed in " + title + " can't be confirmed, because these have been checked again since: " + tc.later.join(", ") + ". The email doesn't say either way.");
     } else if (tc.done.length && !tc.missing.length) {
-      intro = "Compliance checks for " + where + " have been completed: " + tc.done.join(", ") + rangeText_(tc.first, tc.last, mName) + ". The PDFs are attached.";
+      intro = "Compliance checks for " + where + " have been completed: " + tc.done.join(", ") + ". The PDFs are attached.";
+      clearLine = clear("areas", false);
     } else if (tc.done.length) {
       intro = "Compliance checks for " + where + " are partly complete. Done: " + tc.done.join(", ") + ". Still to do: " + tc.missing.join(", ") + ". The PDFs for the completed checks are attached.";
+      clearLine = clear("areas", true);
       notes.push("Not everything is checked for " + title + " yet (still to do: " + tc.missing.join(", ") + "). The email says so. Finish those checks first if you want it to read as complete.");
     } else if (tc.missing.length) {
+      nothingDone = true;
       intro = isCurrent
         ? "No compliance checks have been completed yet for " + where + "."
         : "No completed compliance checks are recorded for " + where + ".";
+      clearLine = "";
       notes.push("No checks are recorded for " + title + " yet. Generate your PDFs first, then open this again.");
     }
   } else if (total > 0 && cov.unknown.length) {
     notes.push("Whether every check was completed in " + title + " can't be confirmed, because these spaces have been checked again since: " + cov.unknown.join(", ") + ". The email doesn't say either way.");
   } else if (total > 0 && !cov.incomplete.length) {
-    let range = "";
-    if (cov.first && cov.last) {
-      range = cov.first.toDateString() === cov.last.toDateString()
-        ? " (checks carried out on " + cov.first.getDate() + " " + mName + ")"
-        : " (checks carried out " + cov.first.getDate() + " to " + cov.last.getDate() + " " + mName + ")";
-    }
-    intro = "Compliance checks for " + title + " have been completed across all " + total + " spaces" + range + ".";
+    intro = "Compliance checks for " + title + " have been completed across all " + total + " spaces.";
+    clearLine = clear("spaces", false);
   } else if (total > 0 && cov.done.length === 0) {
+    nothingDone = true;
     intro = isCurrent
       ? "No compliance checks have been completed yet for " + title + "."
       : "No completed compliance checks are recorded for " + title + ".";
+    clearLine = "";
     notes.push("No space is fully checked for " + title + " yet, and the email says so. Finish the checks first if you want it to read as complete.");
   } else if (total > 0) {
     intro = "Compliance checks for " + title + " have been completed for " + cov.done.length + " of " + total + " spaces. " +
       (isCurrent ? "Not yet completed: " : "Not completed: ") + cov.incomplete.join(", ") + ".";
+    clearLine = clear("spaces", true);
     notes.push(plural_(cov.incomplete.length, "space is", "spaces are") + " not fully checked for " + title + " (" + cov.incomplete.join(", ") + "). The email says so. Finish those checks first if you want it to read as complete.");
   }
 
-  const summaryLine = (sets.added.length || sets.stillOpen.length)
-    ? plural_(sets.added.length, "new issue") + " and " + sets.stillOpen.length + " still open from earlier months."
-    : "No outstanding issues.";
-  const sections = [
-    ["New issues flagged in " + mName, sets.added, "added"],
-    ["Still open from earlier months", sets.stillOpen, "open"]
-  ];
-
+  const P = 'margin:0 0 10px;';
   let html = '<div style="font-family:Arial,Helvetica,sans-serif;font-size:14px;line-height:1.5;color:#1c2024;">' +
-    '<p style="margin:0 0 10px;">Hi all,</p>' +
-    '<p style="margin:0 0 10px;">' + escapeHtml_(intro) + "</p>" +
-    '<p style="margin:0 0 4px;"><b>' + escapeHtml_(summaryLine) + "</b></p>";
-  let text = "Hi all,\n\n" + intro + "\n\n" + summaryLine + "\n";
-  sections.forEach(s => {
-    html += sectionHtml_(s[0], s[1], s[2]);
-    text += sectionText_(s[0], s[1], s[2]);
-  });
+    '<p style="' + P + '">Hi all,</p>' +
+    '<p style="' + P + '">' + escapeHtml_(intro) + "</p>" +
+    (clearLine ? '<p style="' + P + '">' + escapeHtml_(clearLine) + "</p>" : "");
+  let text = "Hi all,\n\n" + intro + "\n" + (clearLine ? "\n" + clearLine + "\n" : "");
+  if (!nothingDone) {
+    groupBySpace_(rows).forEach(g => {
+      html += '<p style="margin:14px 0 4px;"><b>' + escapeHtml_(g.space) + "</b></p>" +
+        '<ul style="margin:2px 0 6px 20px;padding:0;">';
+      text += "\n" + g.space + "\n";
+      g.rows.forEach(r => {
+        const b = bulletParts_(r);
+        html += '<li style="margin:0 0 6px;"><b>' + escapeHtml_(b.main) + "</b>" +
+          (b.note ? "<br><i>" + escapeHtml_(b.note) + "</i>" : "") + "</li>";
+        text += "- " + b.main + "\n" + (b.note ? "  " + b.note + "\n" : "");
+      });
+      html += "</ul>";
+    });
+  }
   html += "</div>";
 
   return {
@@ -3382,7 +3428,7 @@ function buildMonthlySummary(year, month, now) {
     html: html,
     text: text,
     notes: notes,
-    counts: { added: sets.added.length, stillOpen: sets.stillOpen.length }
+    counts: { open: rows.length }
   };
 }
 
@@ -4100,7 +4146,7 @@ function helpTagsHTML_() {
 <div class="help-tag-row"><div class="help-tag-left"><span class="section-dot" style="position:static;display:inline-block;"></span></div>
 <div class="help-tag-right">A red dot beside a section name means something inside it is flagged.</div></div>
 <div class="help-tag-row"><div class="help-tag-left"><span class="maint-flag-badge" style="margin:0;">&#9888; Open on Maintenance List</span></div>
-<div class="help-tag-right">Appears under an item that is already on the Maintenance List, with the reason. It disappears when the item is marked resolved.</div></div>
+<div class="help-tag-right">Appears under an item that is already on the Maintenance List, with the reason. It disappears when the item is marked resolved. Once you press Pass on it, it turns green and says it will be resolved when you generate the PDFs.</div></div>
 <div class="help-tag-row"><div class="help-tag-left"><span class="ext-tag" style="background:#2b2b2b;color:#fff;">CO2</span><span class="ext-tag" style="background:#e7dcc2;color:#5b4b1f;">Foam</span></div>
 <div class="help-tag-right">Extinguisher type, coloured like the real cylinders, so two extinguishers in the same spot are easy to tell apart.</div></div>
 <div class="help-tag-row"><div class="help-tag-left"><span class="maint-count">2 open</span><span class="maint-count zero">Clear</span></div>
@@ -4157,6 +4203,7 @@ function helpScreenHTML_() {
 <li><b>Building and space:</b> choose where you are. The banner shows <span class="status-pill ok">All clear</span> or <span class="status-pill attention">Needs attention</span>, and when the space was last checked.</li>
 <li><b>Four sections:</b> Emergency Lighting, Fire Extinguishers, Fire Doors, Water Temperature. Tap one to open it. A red dot means something in it is flagged.</li>
 <li><b>Pass or Fail</b> on every item. Fail opens a red box for what is wrong and what has been done. <b>Mark all pass</b> saves time when everything is fine.</li>
+<li>An item that is still <b>open on the Maintenance List</b> shows as Fail until you retest it. Press <b>Pass</b> once it is fixed and it is resolved on the list when you generate the PDFs.</li>
 <li><b>Generate PDFs for this space</b> (bottom button) makes the paperwork and updates the Maintenance List.</li>
 <li><b>Edit checkpoints</b> changes what is on the list. <b>Reset</b> clears this space&rsquo;s results on this phone.</li>
 </ul>`;
@@ -4187,17 +4234,18 @@ function helpTopics_() {
     pdf: { title: "Generating PDFs", html:
       `<p>Choose only the sections you actually went through on this visit.</p>
 <p>On a phone, the <b>share sheet</b> opens: choose <b>${sat ? "Files or Drive" : "Drive"}</b> to save them. On a computer they download.</p>
-<p>At the same moment the app updates the <b>Maintenance List</b>: new fails are added, ones already on it get the latest wording, and the date checked is recorded. If your signal is poor, the update is saved and sent automatically when it returns. The line under the logo says when one is waiting.</p>
+<p>At the same moment the app updates the <b>Maintenance List</b>: new fails are added, ones already on it get the latest wording, items you have pressed Pass on are marked resolved, and the date checked is recorded. If your signal is poor, the update is saved and sent automatically when it returns. The line under the logo says when one is waiting.</p>
 ${sat ? "<p>Afterwards, use <b>Monthly email to facilities</b> to send your PDFs.</p>" : ""}` },
     maintList: { title: sat ? "Maintenance List" : "The Maintenance List", html: sat
       ? `<p>Every fault flagged at ${helpSite_()} that is not fixed yet. Open your site to see the issues. Add an <b>Action note</b> to say what is happening, and tap <b>Mark resolved</b> only once the repair is done.</p><p><b>Refresh</b> loads the latest.</p>`
       : `<p>The shared list of everything flagged and not yet fixed, for every space. It is the same for everyone on any device.</p>
-<p>Items arrive by themselves when PDFs are generated with a Fail on the checklist. Add an <b>Action note</b> as things progress and tap <b>Mark resolved</b> when it is properly fixed.</p>
+<p>Items arrive by themselves when PDFs are generated with a Fail on the checklist. Add an <b>Action note</b> as things progress.</p>
+<p>They leave by themselves too: next month an open item shows as Fail on the checklist, and once you retest it and press <b>Pass</b>, generating the PDFs marks it resolved. You can still tap <b>Mark resolved</b> here whenever you like.</p>
 <p><b>Open Sheet</b> explains the Google Sheet behind the list and has a button to open it. <b>Refresh</b> loads the latest.</p>` },
     summary: { title: "Monthly summary email", html: sat
-      ? `<p>Builds the email to facilities for the month you choose. It says whether your checks were completed and lists anything still outstanding.</p>
+      ? `<p>Builds the email to facilities for the month you choose. It opens with whether your checks were completed, then says everything is clear unless mentioned and lists anything still open: the issue in bold, with the action note under it.</p>
 <p>Tap <b>Copy body and open my email app</b>. It opens a new email to ${FACILITIES_EMAIL}, then <b>paste</b> the body in. Remember to <b>attach your PDFs</b>, then send.</p>`
-      : `<p>Builds the end of month email for the month you choose. It says which spaces were completed and lists only what is still outstanding. Things marked resolved or fixed on the spot are left out.</p>
+      : `<p>Builds the end of month email for the month you choose. It opens with how many spaces were fully checked, says all spaces are clear unless mentioned, then lists each space that has open items: the issue in bold, with the action note under it. Things marked resolved or fixed on the spot are left out.</p>
 <p>Tap <b>Copy body and open my email app</b>, paste into the new email, <b>attach the PDFs</b>, and send. Pasting keeps your email signature.</p>
 <p>Satellite sites are left out of this email for now.</p>` },
     sats: { title: "Satellite sites", html:
