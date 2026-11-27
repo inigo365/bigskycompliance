@@ -1082,7 +1082,7 @@ const BIGSKY_LOGO_ASPECT = 700 / 142; // width / height of the source PNG
    ====================================================================== */
 /* App version, shown top right in the header so it is obvious which copy is
    running. Bump this every time index.html is changed. */
-const APP_VERSION = "v2.18";
+const APP_VERSION = "v2.19";
 const APP_VERSION_DATE = "27 Nov 2026";
 
 /* This file is the MAIN app. The satellite pages (satellite/*.html) are generated
@@ -3316,10 +3316,26 @@ function rowLabel_(r) {
   return r.name + (r.ext && !has ? " (" + r.ext + ")" : "");
 }
 
-// The bold part of a bullet: the item and what is wrong. The action note, when
-// there is one, goes under it in italics (only while the item is still open).
+// A bullet is: where (plain), what is wrong (bold), then the action note under
+// it in italics (only while the item is still open).
 function bulletParts_(r) {
-  return { main: rowLabel_(r) + ": " + r.issue, note: r.isResolved ? "" : r.action };
+  return { where: rowLabel_(r), what: r.issue, note: r.isResolved ? "" : r.action };
+}
+
+// Splits one space's rows into compliance-type groups (rows are already in
+// section order), so the email says which kind of check each item belongs to.
+function groupByType_(rows) {
+  const groups = [];
+  rows.forEach(r => {
+    let g = groups[groups.length - 1];
+    if (!g || g.typeId !== r.typeId) {
+      const meta = COMPLIANCE_TYPES.find(t => t.id === r.typeId);
+      g = { typeId: r.typeId, label: meta ? meta.label : (r.typeId || "Other"), rows: [] };
+      groups.push(g);
+    }
+    g.rows.push(r);
+  });
+  return groups;
 }
 
 // For a satellite page with a single space: which compliance types were
@@ -3409,16 +3425,20 @@ function buildMonthlySummary(year, month, now) {
   let text = "Hi all,\n\n" + intro + "\n" + (clearLine ? "\n" + clearLine + "\n" : "");
   if (!nothingDone) {
     groupBySpace_(rows).forEach(g => {
-      html += '<p style="margin:14px 0 4px;"><b>' + escapeHtml_(g.space) + "</b></p>" +
-        '<ul style="margin:2px 0 6px 20px;padding:0;">';
+      html += '<p style="margin:16px 0 2px;"><b>' + escapeHtml_(g.space) + "</b></p>";
       text += "\n" + g.space + "\n";
-      g.rows.forEach(r => {
-        const b = bulletParts_(r);
-        html += '<li style="margin:0 0 6px;"><b>' + escapeHtml_(b.main) + "</b>" +
-          (b.note ? "<br><i>" + escapeHtml_(b.note) + "</i>" : "") + "</li>";
-        text += "- " + b.main + "\n" + (b.note ? "  " + b.note + "\n" : "");
+      groupByType_(g.rows).forEach(tg => {
+        html += '<p style="margin:6px 0 2px;color:#5a6270;">' + escapeHtml_(tg.label) + "</p>" +
+          '<ul style="margin:2px 0 8px 20px;padding:0;">';
+        text += tg.label + "\n";
+        tg.rows.forEach(r => {
+          const b = bulletParts_(r);
+          html += '<li style="margin:0 0 6px;">' + escapeHtml_(b.where) + ": <b>" + escapeHtml_(b.what) + "</b>" +
+            (b.note ? "<br><i>" + escapeHtml_(b.note) + "</i>" : "") + "</li>";
+          text += "- " + b.where + ": " + b.what + "\n" + (b.note ? "  " + b.note + "\n" : "");
+        });
+        html += "</ul>";
       });
-      html += "</ul>";
     });
   }
   html += "</div>";
@@ -4243,9 +4263,9 @@ ${sat ? "<p>Afterwards, use <b>Monthly email to facilities</b> to send your PDFs
 <p>They leave by themselves too: next month an open item shows as Fail on the checklist, and once you retest it and press <b>Pass</b>, generating the PDFs marks it resolved. You can still tap <b>Mark resolved</b> here whenever you like.</p>
 <p><b>Open Sheet</b> explains the Google Sheet behind the list and has a button to open it. <b>Refresh</b> loads the latest.</p>` },
     summary: { title: "Monthly summary email", html: sat
-      ? `<p>Builds the email to facilities for the month you choose. It opens with whether your checks were completed, then says everything is clear unless mentioned and lists anything still open: the issue in bold, with the action note under it.</p>
+      ? `<p>Builds the email to facilities for the month you choose. It opens with whether your checks were completed, then says everything is clear unless mentioned and lists anything still open, grouped by section: the location, the fault in bold, and the action note under it in italics.</p>
 <p>Tap <b>Copy body and open my email app</b>. It opens a new email to ${FACILITIES_EMAIL}, then <b>paste</b> the body in. Remember to <b>attach your PDFs</b>, then send.</p>`
-      : `<p>Builds the end of month email for the month you choose. It opens with how many spaces were fully checked, says all spaces are clear unless mentioned, then lists each space that has open items: the issue in bold, with the action note under it. Things marked resolved or fixed on the spot are left out.</p>
+      : `<p>Builds the end of month email for the month you choose. It opens with how many spaces were fully checked, says all spaces are clear unless mentioned, then lists each space that has open items, grouped by section (Emergency Lighting, Fire Doors and so on): the location, the fault in bold, and the action note under it in italics. Things marked resolved or fixed on the spot are left out.</p>
 <p>Tap <b>Copy body and open my email app</b>, paste into the new email, <b>attach the PDFs</b>, and send. Pasting keeps your email signature.</p>
 <p>Satellite sites are left out of this email for now.</p>` },
     sats: { title: "Satellite sites", html:
